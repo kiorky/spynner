@@ -1,0 +1,20 @@
+= What's spynner =
+
+Spynner is a programmatic web browser module for Python with Javascript/AJAX support. It is based upon the [PyQtWebKit http://trac.webkit.org/wiki/QtWebKit] framework. Using spynner you would able to interact with a web browser from Python, using no GUI at all (though a browser window can be opened for debugging purposes)
+
+[http://webkit.org/ WebKit] is an open-source web browser layout engine which has been ported to multiple platforms and is used as the rendering engine within many applications. Its WebCore and JavaScriptCore components are available under the GNU Lesser General Public License, and WebKit as a whole is available with a BSD-style license.
+
+WebKit was originally derived by Apple Inc. from the Konqueror browser’s KHTML software library for use as the engine of Mac OS X’s Safari web browser and has now been further developed by individuals from the KDE project, Apple Inc., Nokia, Google, Torch Mobile and others.
+
+= Install =
+
+{{{
+$ wget http://spynner.googlecode.com/files/spynner-VERSION.tgz
+$ tar xvzf spynner-VERSION.tgz
+$ cd spynner-VERSION
+$ sudo python setup.py install
+}}}
+
+= Usage examples =
+
+TODO

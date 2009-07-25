@@ -1,0 +1,35 @@
+<html>
+  <head>
+    <title>Test1 HTML</title>
+    <script type="text/javascript">
+      function SetCookie(cookieName, cookieValue, nDays) {
+        var today = new Date();
+        var expire = new Date();
+        if (nDays == null || nDays==0) 
+          nDays=1;
+        expire.setTime(today.getTime() + 3600000 * 24 * nDays);
+        document.cookie = cookieName + "=" + escape(cookieValue) +
+                          ";expires=" + expire.toGMTString();
+      }
+      SetCookie("mycookie", "12345", 10);
+   </script>        
+  </head>
+
+  <body>
+    <form id="form" action="/test2.html">   
+      <input type="checkbox" name="enabled" id="check" />	
+      <input type="radio" name="radio" id="radio1" />
+      <input type="radio" name="radio" id="radio2" />
+      <input type="radio" name="radio" id="radio3" />
+      <input name="user" type="text" />	
+      <input id="submit" type="submit" value="Send" />
+    </form>
+    
+    <select name="select" id="select">
+      <option id="option1" value="1">Option1</option>
+      <option id="option2" value="2">Option2</option>
+    </select>    
+     
+    <a id="link" href="/test3.html">link</a>
+  </body>
+</html>
