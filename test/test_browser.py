@@ -91,7 +91,7 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.assertTrue(self.browser.runjs(jscode).toPyObject())
 
     def test_select(self):
-        self.browser.select("#select", "2")
+        self.browser.select("#select option[value=2]")
         jscode = "jQuery('#option2').attr('selected')"
         self.assertTrue(self.browser.runjs(jscode).toPyObject())
 
@@ -127,6 +127,10 @@ class SpynnerBrowserTest(unittest.TestCase):
     def test_download(self):
         data = self.browser.download(get_url('/test2.html'))
         self.assertEqual(open(get_file_path('test2.html')).read(), data)
+
+    def test_download_only_http(self):
+        self.assertRaises(spynner.SpynnerError,
+            self.browser.download, "ftp://server.com/file.tgz")
 
     def test_stream_download(self):
         outfd = StringIO()

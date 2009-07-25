@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (c) 2008-2009 Arnau Sanchez <tokland@gmail.com>
+# Copyright (c) Arnau Sanchez <tokland@gmail.com>
 
 # This script is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ import tempfile
 import urlparse
 import urllib2
 import time
+import re
 import sys
 import os
 
@@ -42,8 +43,10 @@ def first(iterable, pred=bool):
         if pred(item):
             return item
 
-def debug(obj, linefeed=True, outfd=sys.stderr):
+def debug(obj, linefeed=True, outfd=sys.stderr, outputencoding="utf8"):
     """Print a debug info line to standard error channel"""
+    if isinstance(obj, unicode):
+        obj = obj.encode(outputencoding)
     strobj = str(obj) + ("\n" if linefeed else "")
     outfd.write(strobj)
     outfd.flush()
@@ -93,7 +96,7 @@ class SpynnerJavascriptError(Exception):
     pass
                    
 class NetworkCookieJar(QNetworkCookieJar):
-    def mozillaCookies(self, domain_flag=False):
+    def mozillaCookies(self):
         """
         Return string containing all cookies in cookie jar in
         text Mozilla cookies format:
@@ -105,6 +108,7 @@ class NetworkCookieJar(QNetworkCookieJar):
         def bool2str(value):
             return {True: "TRUE", False: "FALSE"}[value]
         def get_line(cookie):
+            domain_flag = str(cookie.domain()).startswith(".") 
             return "\t".join([
                 str(cookie.domain()),
                 bool2str(domain_flag),
@@ -180,7 +184,7 @@ class Browser:
             debug(*args, outfd=self.debugfd)
 
     def _manager_create_request(self, operation, request, data):
-        url = str(request.url().toString())
+        url = unicode(request.url().toString())
         operation_name = self.operation_names[operation].upper()
         self._debug(INFO, "Request: %s %s" % (operation_name, url))
         for h in request.rawHeaderList():
@@ -189,7 +193,7 @@ class Browser:
             request, data)
 
     def _on_unsupported_content(self, reply):
-        url = str(reply.url().toString())
+        url = unicode(reply.url().toString())
         urlinfo = urlparse.urlsplit(url)
         path = urlinfo.netloc + urlinfo.path
         if not os.path.isdir(os.path.dirname(path)):
@@ -197,7 +201,7 @@ class Browser:
         self.download(url, outfd=open(path, "wb"))
 
     def _on_reply(self, reply):
-        url = str(reply.url().toString())
+        url = unicode(reply.url().toString())
         if reply.error():
             self._debug(INFO, "Reply error: %s - %d (%s)" % (url, reply.error(),
                 reply.errorString()))
@@ -331,10 +335,9 @@ class Browser:
         JSCODE_EXTRA = "jQuery('%s').simulate('click')" % selector
         self._runjs_on_jquery("choose", JSCODE_EXTRA)
 
-    def select(self, selector, value):        
+    def select(self, selector):        
         """Choose a radio input."""
-        JSCODE_EXTRA = "jQuery('%s option[value=%s]').attr('selected', 'selected')" \
-            % (selector, value)
+        JSCODE_EXTRA = "jQuery('%s').attr('selected', 'selected')" % selector
         self._runjs_on_jquery("select", JSCODE_EXTRA)
         
     def runjs(self, JSCODE_EXTRA, debug=True):
@@ -348,9 +351,16 @@ class Browser:
         return self.cookiesjar.mozillaCookies()
     
     def download(self, url, outfd=None, bufsize=4096*16, cookies=None):
-        """Download given URL using current cookies."""        
+        """Download given URL using current cookies.
+        
+        If url is a path, preppend current base URL."""        
         if cookies is None:
             cookies = self.get_mozilla_cookies()
+        match = re.match("^(\w+)://", url)
+        if match and match.group(1) != "http":
+            raise SpynnerError("Only http downloads are supported")            
+        if url.startswith("/"):
+            url = self.get_url_from_path(url)
         self._debug(INFO, "Downloading URL: %s" % url)        
         self._debug(DEBUG, "Using cookies: %s" % cookies)
         opener = get_opener(cookies)
@@ -358,4 +368,4 @@ class Browser:
 
     def get_url_from_path(self, path):
         """Return the URL for a given path using current URL as base."""
-        return urlparse.urljoin(self.get_url(), path.lstrip('/'))
+        return urlparse.urljoin(self.get_url(), path)
