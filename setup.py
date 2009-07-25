@@ -1,4 +1,5 @@
 #!/usr/bin/python
+#
 # Copyright (c) 2008-2009 Arnau Sanchez <tokland@gmail.com>
 
 # This script is free software: you can redistribute it and/or modify
@@ -15,9 +16,11 @@
 # along with this software.  If not, see <http://www.gnu.org/licenses/>
 
 from setuptools import setup
+version = "0.0.1"
 
 setup(
     name="spynner",
+    version=version,
     description="Programmatic web browsing module with AJAX support for Python",
     author="Arnau Sanchez",
     author_email="tokland@gmail.com",
