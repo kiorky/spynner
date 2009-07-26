@@ -1,5 +1,5 @@
 #!/usr/bin/python
-#
+
 # Copyright (c) Arnau Sanchez <tokland@gmail.com>
 
 # This script is free software: you can redistribute it and/or modify
@@ -14,11 +14,9 @@
 
 # You should have received a copy of the GNU General Public License
 
-import string
-import cgi
-import time
 import os
 import re
+import cgi
 
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
@@ -42,14 +40,10 @@ class MyHandler(BaseHTTPRequestHandler):
      
     def do_POST(self):
         ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-        if ctype == 'multipart/form-data':
-            query=cgi.parse_multipart(self.rfile, pdict)
-        self.send_response(301)        
+        self.send_response(200)        
+        self.send_header('Content-type', 'text/html')
         self.end_headers()
-        upfilecontent = query.get('upfile')
-        #print "filecontent", upfilecontent[0]
-        self.wfile.write("<HTML>POST OK.<BR><BR>");
-        self.wfile.write(upfilecontent[0]);
+        self.wfile.write("<html></html>");
 
     def log_message(self, *args):
         if self.verbose:
