@@ -220,11 +220,13 @@ class Browser:
                              
     def _javascript_alert(self, webframe, message):
         self._debug(INFO, "Javascript alert: %s" % message)
+        if self.webview:
+            QWebPage.javaScriptAlert(self.webpage, webframe, message)
         
-    def _javascript_console_message(self, message, linenumber, sourceid):
-        if linenumber:
+    def _javascript_console_message(self, message, line, sourceid):
+        if line:
             self._debug(INFO, "Javascript console (%s:%d): %s" %
-                (sourceid, linenumber, message))
+                (sourceid, line, message))
         else:
             self._debug(INFO, "Javascript console: %s" % message)
                                              
@@ -310,7 +312,7 @@ class Browser:
         self.show()
         while self.webview:
             self.app.processEvents()
-            time.sleep(self.events_looptime)
+            time.sleep(self.event_looptime)
 
     def get_html(self):
         """Get current HTML for this web frame."""
