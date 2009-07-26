@@ -128,7 +128,8 @@ class Browser:
     ]
 
     javascript_directories = [
-        os.path.join(os.path.dirname(__file__), "../javascript"), 
+        os.path.join(os.path.dirname(__file__), "../javascript"),
+        os.path.join(os.path.dirname(__file__), "../share/spynner/javascript"),
         "/usr/share/spynner/javascript",
     ]
     
@@ -272,7 +273,7 @@ class Browser:
     # Public interface
 
     def load(self, url):
-        """Load a page."""
+        """Load a web page and return status boolean."""
         self.webframe.load(QUrl(url))
         return self._wait_page_load()
 
@@ -287,16 +288,16 @@ class Browser:
         self.webview.hide()
 
     def close(self):
-        """Close browser object"""
+        """Close browser object and release resources."""
         if self.webview:
             del self.webview
         if self.webpage:
             del self.webpage
         
     def wait(self, waitime):
-        """Wait 'waitime' seconds and return.
+        """Wait some time.
         
-        The page rendering loop is enabled, so you can call this function
+        The event and rendering loop is enabled, so you can call this function
         to wait for DOM changes (due to syncronous Javascript events)."""   
         itime = time.time()
         while time.time() - itime < waitime:
@@ -317,41 +318,41 @@ class Browser:
             time.sleep(self.event_looptime)
 
     def get_html(self):
-        """Get current HTML for this web frame."""
+        """Get the current HTML for this webframe."""
         return unicode(self.webframe.toHtml())
     
     def get_url(self):
-        """Get current URL for this web frame."""
+        """Get the current URL for this webframe."""
         return unicode(self.webframe.url().toString())
 
     def fill(self, selector, value):
-        """Fill an input text with value."""
+        """Fill an input text with a strin value using a jQuery selector."""
         JSCODE_EXTRA = "jQuery('%s').val('%s')" % (selector, value)
         self._runjs_on_jquery("fill", JSCODE_EXTRA)
 
     def click(self, selector):
-        """Click link or button."""
+        """Click link or button using a jQuery selector."""
         JSCODE_EXTRA = "jQuery('%s').simulate('click')" % selector
         self._runjs_on_jquery("click", JSCODE_EXTRA)
         return self._wait_page_load()         
 
     def check(self, selector):
-        """Check input checkbox to value (True by default)."""
+        """Check an input checkbox using a jQuery selector."""
         JSCODE_EXTRA = "jQuery('%s').attr('checked', true)" % selector
         self._runjs_on_jquery("check", JSCODE_EXTRA)
 
     def uncheck(self, selector):
-        """Check input checkbox."""
+        """Check input checkbox using a jQuery selector"""
         JSCODE_EXTRA = "jQuery('%s').attr('checked', false)" % selector
         self._runjs_on_jquery("uncheck", JSCODE_EXTRA)
 
     def choose(self, selector):        
-        """Choose a radio input."""
+        """Choose a radio input using a jQuery selector."""
         JSCODE_EXTRA = "jQuery('%s').simulate('click')" % selector
         self._runjs_on_jquery("choose", JSCODE_EXTRA)
 
     def select(self, selector):        
-        """Choose a radio input."""
+        """Choose a radio input using a jQuery selector."""
         JSCODE_EXTRA = "jQuery('%s').attr('selected', 'selected')" % selector
         self._runjs_on_jquery("select", JSCODE_EXTRA)
         
@@ -362,13 +363,13 @@ class Browser:
         return self.webpage.mainFrame().evaluateJavaScript(JSCODE_EXTRA)
 
     def get_mozilla_cookies(self):
-        """Return string with current cookies in Mozilla format.""" 
+        """Return string containing the current cookies in Mozilla format.""" 
         return self.cookiesjar.mozillaCookies()
             
     def download(self, url, outfd=None, bufsize=4096*16, cookies=None):
         """Download given URL using current cookies.
         
-        If url is a path, preppend current base URL."""        
+        If url is a path, pre-ppend the current base url."""        
         if cookies is None:
             cookies = self.get_mozilla_cookies()
         if url.startswith("/"):
@@ -380,5 +381,5 @@ class Browser:
         return download(url, get_opener(cookies), outfd, bufsize)
 
     def get_url_from_path(self, path):
-        """Return the URL for a given path using current URL as base."""
+        """Return the URL for a given path using current URL as base url."""
         return urlparse.urljoin(self.get_url(), path)
