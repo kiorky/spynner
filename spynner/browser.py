@@ -178,7 +178,7 @@ class Browser:
             self._on_unsupported_content)
         self.webpage.connect(self.webpage, 
             SIGNAL('loadFinished(bool)'),
-            self._on_finished_loading)
+            self._on_load_status)
         self.manager.connect(self.manager, 
             SIGNAL('finished(QNetworkReply *)'),
             self._on_reply)
@@ -200,10 +200,11 @@ class Browser:
     def _on_unsupported_content(self, reply):
         url = unicode(reply.url().toString())
         urlinfo = urlparse.urlsplit(url)
-        path = urlinfo.netloc + urlinfo.path
-        if not os.path.isdir(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path))
-        self.download(url, outfd=open(path, "wb"))            
+        if urlinfo.scheme == "http":
+            path = urlinfo.netloc + urlinfo.path
+            if not os.path.isdir(os.path.dirname(path)):
+                os.makedirs(os.path.dirname(path))
+            self.download(url, outfd=open(path, "wb"))            
 
     def _on_reply(self, reply):
         self.reply = reply 
@@ -230,21 +231,23 @@ class Browser:
     def _on_webview_destroyed(self, window):
         self.webview = None
                                              
-    def _on_finished_loading(self, successful):        
-        self._finished_loading = True  
+    def _on_load_status(self, successful):        
+        self._load_status = successful  
         status = {True: "successful", False: "error"}[successful]
         self._debug(INFO, "Page load finished (%d bytes): %s (%s)" % 
             (len(self.get_html()), self.get_url(), status))
 
     def _wait_page_load(self, timeout=None):
-        self._finished_loading = False
+        self._load_status = None
         itime = time.time()
-        while not self._finished_loading:
+        while self._load_status is None:
             if timeout and time.time() - itime > timeout:
                 raise SpynnerTimeout("Timeout reached: %d seconds" % timeout)
             time.sleep(self.event_looptime)
             self.app.processEvents(QEventLoop.AllEvents)
-        self.runjs(self.javascript + JSCODE_EXTRA, debug=False)
+        if self._load_status:
+            self.runjs(self.javascript + JSCODE_EXTRA, debug=False)
+        return self._load_status
 
     def _runjs_on_jquery(self, name, code):
         """Check input checkbox to value (True by default)."""
@@ -259,13 +262,17 @@ class Browser:
         res = self.runjs(code)
         if _get_js_obj_length(res) < 1:
             raise SpynnerJavascriptError("error on %s: %s" % (name, code))
+
+    def _get_protocol(self, url):
+        match = re.match("^(\w+)://", url)
+        return (match.group(1) if match else None)
         
     # Public interface
 
     def load(self, url):
         """Load a page."""
         self.webframe.load(QUrl(url))
-        self._wait_page_load()
+        return self._wait_page_load()
 
     def show(self):
         """Show browser window."""
@@ -294,7 +301,7 @@ class Browser:
 
     def wait_page_load(self, timeout=None):
         """Wait until a new page is loaded."""
-        self._wait_page_load(timeout)
+        return self._wait_page_load(timeout)
                 
     def browse(self):
         """Let the user browse the current page (infinite loop).""" 
@@ -322,7 +329,7 @@ class Browser:
         """Click link or button."""
         JSCODE_EXTRA = "jQuery('%s').simulate('click')" % selector
         self._runjs_on_jquery("click", JSCODE_EXTRA)
-        self._wait_page_load()         
+        return self._wait_page_load()         
 
     def check(self, selector):
         """Check input checkbox to value (True by default)."""
@@ -353,18 +360,17 @@ class Browser:
     def get_mozilla_cookies(self):
         """Return string with current cookies in Mozilla format.""" 
         return self.cookiesjar.mozillaCookies()
-    
+            
     def download(self, url, outfd=None, bufsize=4096*16, cookies=None):
         """Download given URL using current cookies.
         
         If url is a path, preppend current base URL."""        
         if cookies is None:
             cookies = self.get_mozilla_cookies()
-        match = re.match("^(\w+)://", url)
-        if match and match.group(1) != "http":
-            raise SpynnerError("Only http downloads are supported")            
         if url.startswith("/"):
             url = self.get_url_from_path(url)
+        if self._get_protocol(url) != "http": 
+            raise SpynnerError("Only http downloads are supported")            
         self._debug(INFO, "Start download: %s" % url)        
         self._debug(DEBUG, "Using cookies: %s" % cookies)
         return download(url, get_opener(cookies), outfd, bufsize)

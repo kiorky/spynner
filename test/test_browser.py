@@ -67,7 +67,11 @@ class SpynnerBrowserTest(unittest.TestCase):
         browser.wait(0.01)
         browser.hide()        
         browser.close()
-                        
+
+    def test_load_should_return_status_boolean(self):
+        self.assertTrue(self.browser.load(get_url("/test1.html")))
+        self.assertFalse(self.browser.load("wrong://this-cannot-work"))
+                                
     def test_get_html(self):
         html = self.browser.get_html()
         self.assertTrue("Test1 HTML" in html)
