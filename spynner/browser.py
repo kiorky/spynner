@@ -129,8 +129,7 @@ class Browser:
 
     javascript_directories = [
         os.path.join(os.path.dirname(__file__), "../javascript"),
-        os.path.join(os.path.dirname(__file__), "../share/spynner/javascript"),
-        "/usr/share/spynner/javascript",
+        os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
     
     def __init__(self, webview=False, qappargs=None,
