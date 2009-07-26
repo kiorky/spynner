@@ -1,1 +1,1 @@
-from spynner import *
+from browser import *

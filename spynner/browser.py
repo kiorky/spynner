@@ -1,5 +1,5 @@
 #!/usr/bin/python
-#
+
 # Copyright (c) Arnau Sanchez <tokland@gmail.com>
 
 # This script is free software: you can redistribute it and/or modify
@@ -38,28 +38,21 @@ JSCODE_EXTRA = """
 """
 
 def first(iterable, pred=bool):
-    """Return first item in iterator that matches the predicate"""
+    """Return first element in iterator that matches the predicate"""
     for item in iterable:
         if pred(item):
             return item
 
 def debug(obj, linefeed=True, outfd=sys.stderr, outputencoding="utf8"):
-    """Print a debug info line to standard error channel"""
+    """Print a debug info line to stream channel"""
     if isinstance(obj, unicode):
         obj = obj.encode(outputencoding)
     strobj = str(obj) + ("\n" if linefeed else "")
     outfd.write(strobj)
     outfd.flush()
-
-def load_files(directories, files):
-    """Look for and existing directory in 'directories' and 
-    return concatenation of 'files' contents."""
-    directory = first(directories, os.path.isdir)
-    if directory:
-        return [open(os.path.join(directory, fn)).read() for fn in files]
      
-def get_opener(mozilla_cookies):
-    """Open a cookies file and return a urllib2 opener object"""
+def get_opener(mozilla_cookies=None):
+    """Return a urllib2 opener object using (optional) mozilla cookies string"""
     if not mozilla_cookies:
         return urllib2.build_opener()
     cookies = cookielib.MozillaCookieJar()
@@ -70,7 +63,7 @@ def get_opener(mozilla_cookies):
     return urllib2.build_opener(urllib2.HTTPCookieProcessor(cookies))
    
 def download(url, opener, outfd=None, bufsize=4096):
-    """Download a URL using a urllib2.opener (which may contain cookies).
+    """Download a URL using a urllib2.opener.
     
     Returns data read if outfd is None, total bytes downloaded otherwise."""
     infd = opener.open(url)
@@ -89,7 +82,10 @@ def download(url, opener, outfd=None, bufsize=4096):
 class SpynnerError(Exception):
     pass
 
-class SpynnerTimeoutError(Exception):
+class SpynnerPageError(Exception):
+    pass
+
+class SpynnerTimeout(Exception):
     pass
 
 class SpynnerJavascriptError(Exception):
@@ -102,21 +98,24 @@ class NetworkCookieJar(QNetworkCookieJar):
         text Mozilla cookies format:
         
         # domain domain_flag path secure_connection expiration name value
+        
         .firefox.com     TRUE   /  FALSE  946684799   MOZILLA_ID  100103        
         """
         header = ["# Netscape HTTP Cookie File"]        
         def bool2str(value):
             return {True: "TRUE", False: "FALSE"}[value]
+        def byte2str(value):            
+            return str(value)        
         def get_line(cookie):
-            domain_flag = str(cookie.domain()).startswith(".") 
+            domain_flag = str(cookie.domain()).startswith(".")
             return "\t".join([
-                str(cookie.domain()),
+                byte2str(cookie.domain()),
                 bool2str(domain_flag),
-                str(cookie.path()),
+                byte2str(cookie.path()),
                 bool2str(cookie.isSecure()),
-                str(cookie.expirationDate().toTime_t()),
-                str(cookie.name()),
-                str(cookie.value()),
+                byte2str(cookie.expirationDate().toTime_t()),
+                byte2str(cookie.name()),
+                byte2str(cookie.value()),
             ])
         lines = [get_line(cookie) for cookie in self.allCookies() 
           if not cookie.isSessionCookie()]
@@ -133,9 +132,10 @@ class Browser:
         "/usr/share/spynner/javascript",
     ]
     
-    def __init__(self, webview=False, jqueryfiles=None, qappargs=None,
+    def __init__(self, webview=False, qappargs=None,
             verbose_level=ERROR, debugfd=sys.stderr):
         self.verbose_level = verbose_level
+        self.event_looptime = 0.01
         self.debugfd = debugfd
         self.app = QApplication(qappargs or [])
         self.webpage = QWebPage()
@@ -149,13 +149,15 @@ class Browser:
                 self._on_webview_destroyed)
         else:
             self.webview = None
+        self.reply = None
             
         # Javascript
-        self.javascript = "".join(load_files(self.javascript_directories, 
-            self.javascript_files))
-        if self.javascript is None:
+        directory = first(self.javascript_directories, os.path.isdir)
+        if not directory:
             raise SpynnerError("Cannot find javascript directory: %s" %
-                directories) 
+                self.javascript_directories)           
+        self.javascript = "".join(open(os.path.join(directory, fn)).read() 
+            for fn in self.javascript_files)
 
         self.webpage.javaScriptAlert = self._javascript_alert                
         self.webpage.javaScriptConsoleMessage = self._javascript_console_message
@@ -174,14 +176,17 @@ class Browser:
         self.webpage.connect(self.webpage,
             SIGNAL('unsupportedContent(QNetworkReply *)'), 
             self._on_unsupported_content)
-        self.webpage.connect(self.webpage, SIGNAL('loadFinished(bool)'),
+        self.webpage.connect(self.webpage, 
+            SIGNAL('loadFinished(bool)'),
             self._on_finished_loading)
-        self.manager.connect(self.manager, SIGNAL('finished(QNetworkReply *)'),
+        self.manager.connect(self.manager, 
+            SIGNAL('finished(QNetworkReply *)'),
             self._on_reply)
 
     def _debug(self, level, *args):
         if level <= self.verbose_level:
-            debug(*args, outfd=self.debugfd)
+            kwargs = dict(outfd=self.debugfd)
+            debug(*args, **kwargs)
 
     def _manager_create_request(self, operation, request, data):
         url = unicode(request.url().toString())
@@ -197,29 +202,30 @@ class Browser:
         urlinfo = urlparse.urlsplit(url)
         path = urlinfo.netloc + urlinfo.path
         if not os.path.isdir(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path))        
-        self.download(url, outfd=open(path, "wb"))
+            os.makedirs(os.path.dirname(path))
+        self.download(url, outfd=open(path, "wb"))            
 
     def _on_reply(self, reply):
+        self.reply = reply 
         url = unicode(reply.url().toString())
         if reply.error():
-            self._debug(INFO, "Reply error: %s - %d (%s)" % (url, reply.error(),
-                reply.errorString()))
-            # raise Exception on error?
-        else: 
+            self._debug(WARNING, "Reply error: %s - %d (%s)" % 
+                (url, reply.error(), reply.errorString()))
+            #raise SpynnerPageError("Error on reply: %s" % reply.errorString())
+        else:
             self._debug(INFO, "Reply successful: %s" % url)
         for header in reply.rawHeaderList():
             self._debug(DEBUG, "  %s: %s" % (header, reply.rawHeader(header)))
                              
     def _javascript_alert(self, webframe, message):
-        self._debug(ERROR, "Javascript alert: %s" % message)
+        self._debug(INFO, "Javascript alert: %s" % message)
         
     def _javascript_console_message(self, message, linenumber, sourceid):
         if linenumber:
-            self._debug(ERROR, "Javascript console (%s:%d): %s" %
+            self._debug(INFO, "Javascript console (%s:%d): %s" %
                 (sourceid, linenumber, message))
         else:
-            self._debug(ERROR, "Javascript console: %s" % message)
+            self._debug(INFO, "Javascript console: %s" % message)
                                              
     def _on_webview_destroyed(self, window):
         self.webview = None
@@ -227,19 +233,18 @@ class Browser:
     def _on_finished_loading(self, successful):        
         self._finished_loading = True  
         status = {True: "successful", False: "error"}[successful]
-        self._debug(DEBUG, "Page load finished (%d bytes): %s (%s)" % 
+        self._debug(INFO, "Page load finished (%d bytes): %s (%s)" % 
             (len(self.get_html()), self.get_url(), status))
 
-    def _process(self, timeout=None, looptime=0.01):
+    def _wait_page_load(self, timeout=None):
         self._finished_loading = False
         itime = time.time()
         while not self._finished_loading:
             if timeout and time.time() - itime > timeout:
-                raise SpynnerTimeoutError("Timeout reached: %d seconds" % timeout)
-            time.sleep(looptime)
+                raise SpynnerTimeout("Timeout reached: %d seconds" % timeout)
+            time.sleep(self.event_looptime)
             self.app.processEvents(QEventLoop.AllEvents)
-        self.runjs(self.javascript+JSCODE_EXTRA, debug=False)
-        return self.get_html()
+        self.runjs(self.javascript + JSCODE_EXTRA, debug=False)
 
     def _runjs_on_jquery(self, name, code):
         """Check input checkbox to value (True by default)."""
@@ -258,26 +263,26 @@ class Browser:
     # Public interface
 
     def load(self, url):
-        """Load a page from its URL and return rendered HTML."""
+        """Load a page."""
         self.webframe.load(QUrl(url))
-        return self._process()
+        self._wait_page_load()
 
     def show(self):
-        """Show web-browser window."""
+        """Show browser window."""
         self.webview.show()
 
     def hide(self):
-        """Hide web-browser window."""
+        """Hide browser window."""
         self.webview.hide()
 
     def close(self):
-        """Close browser object."""
+        """Close browser object"""
         if self.webview:
             del self.webview
         if self.webpage:
             del self.webpage
         
-    def wait(self, waitime, looptime=0.01):
+    def wait(self, waitime):
         """Wait 'waitime' seconds and return.
         
         The page rendering loop is enabled, so you can call this function
@@ -285,20 +290,20 @@ class Browser:
         itime = time.time()
         while time.time() - itime < waitime:
             self.app.processEvents()
-            time.sleep(looptime)        
+            time.sleep(self.event_looptime)        
 
-    def wait_redirect(self, timeout=None):
-        """Click link or button."""
-        return self._process(timeout)
+    def wait_page_load(self, timeout=None):
+        """Wait until a new page is loaded."""
+        self._wait_page_load(timeout)
                 
-    def browse(self, looptime=0.01):
+    def browse(self):
         """Let the user browse the current page (infinite loop).""" 
         if not self.webview:
             raise SpynnerError("Cannot browse with webview disabled")
         self.show()
         while self.webview:
             self.app.processEvents()
-            time.sleep(looptime)
+            time.sleep(self.events_looptime)
 
     def get_html(self):
         """Get current HTML for this web frame."""
@@ -316,9 +321,8 @@ class Browser:
     def click(self, selector):
         """Click link or button."""
         JSCODE_EXTRA = "jQuery('%s').simulate('click')" % selector
-        #JSCODE_EXTRA = "jQuery('%s')[0].dispatchEventy(evObj)" % selector
         self._runjs_on_jquery("click", JSCODE_EXTRA)
-        return self._process()         
+        self._wait_page_load()         
 
     def check(self, selector):
         """Check input checkbox to value (True by default)."""
@@ -361,10 +365,9 @@ class Browser:
             raise SpynnerError("Only http downloads are supported")            
         if url.startswith("/"):
             url = self.get_url_from_path(url)
-        self._debug(INFO, "Downloading URL: %s" % url)        
+        self._debug(INFO, "Start download: %s" % url)        
         self._debug(DEBUG, "Using cookies: %s" % cookies)
-        opener = get_opener(cookies)
-        return download(url, opener, outfd, bufsize)
+        return download(url, get_opener(cookies), outfd, bufsize)
 
     def get_url_from_path(self, path):
         """Return the URL for a given path using current URL as base."""

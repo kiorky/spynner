@@ -1,4 +1,20 @@
 #!/usr/bin/python
+
+# Copyright (c) Arnau Sanchez <tokland@gmail.com>
+
+# This script is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>
+
 import os
 import sys
 import signal
@@ -29,10 +45,10 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.debugoutput = StringIO()
         webview = False
         self.browser = spynner.Browser(webview=webview,
-        verbose_level=spynner.WARNING, debugfd=self.debugoutput)
+        verbose_level=spynner.DEBUG, debugfd=self.debugoutput)
         if webview: 
             self.browser.show()
-        self.html = self.browser.load(get_url("/test1.html"))
+        self.browser.load(get_url("/test1.html"))
 
     def tearDown(self):
         self.browser.close()
@@ -44,18 +60,14 @@ class SpynnerBrowserTest(unittest.TestCase):
     # Tests
     
     def test_init_with_webview(self):
-        browser = spynner.Browser(webview=True, verbose_level=spynner.WARNING)
+        browser = spynner.Browser(webview=True, verbose_level=spynner.DEBUG)
         html = self.browser.load(get_url("/test1.html"))
         browser.webview.show = lambda *args: None
         browser.show()
         browser.wait(0.01)
         browser.hide()        
         browser.close()
-        
-    def test_load_basic(self):
-        self.assertTrue("Test1 HTML" in self.html)
-        self.assertEqual(get_url("/test1.html"), self.browser.get_url())
-
+                        
     def test_get_html(self):
         html = self.browser.get_html()
         self.assertTrue("Test1 HTML" in html)
@@ -63,13 +75,13 @@ class SpynnerBrowserTest(unittest.TestCase):
     def test_get_url(self):
         self.assertEqual(get_url("/test1.html"), self.browser.get_url())
 
-    def test_wait_redirect(self):
-        self.browser.runjs("window.location = '/b.html'")
-        self.browser.wait_redirect(1000)
+    def test_wait_page_load(self):
+        self.browser.runjs("window.location = '/test2.html'")
+        self.browser.wait_page_load(1000)
 
-    def test_wait_redirect_timeout(self):
-        self.assertRaises(spynner.SpynnerTimeoutError, 
-            self.browser.wait_redirect, 0.1)
+    def test_wait_page_load_raises_exception_on_timeout(self):
+        self.assertRaises(spynner.SpynnerTimeout, 
+            self.browser.wait_page_load, 0.1)
         
     def test_click(self):
         self.browser.click("#link")

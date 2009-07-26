@@ -1,5 +1,5 @@
 = TODO =
-
+  
   * Make it possible to use another Javascript library instead of Jquery. The programmer should then override some methods (click, select, check ...)
 
   * Implement some mechanism to avoid loading every element in the pages (regexp? callback?)
