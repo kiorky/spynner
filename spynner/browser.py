@@ -132,7 +132,7 @@ class Browser:
         os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
     
-    def __init__(self, webview=False, qappargs=None,
+    def __init__(self, webview=False, qappargs=None, ignore_ssl_errors=True,
             verbose_level=ERROR, debugfd=sys.stderr):
         self.verbose_level = verbose_level
         self.event_looptime = 0.01
@@ -170,6 +170,10 @@ class Browser:
         self.manager.setCookieJar(self.cookiesjar)
         self.operation_names = dict((getattr(QNetworkAccessManager, s+"Operation"),
             s.lower()) for s in ("Get", "Head", "Post", "Put"))
+        if ignore_ssl_errors:
+            self.manager.connect(self.manager, 
+                SIGNAL("sslErrors (QNetworkReply *, const QList<QSslError> &)"),
+                self._on_manager_ssl_errors)
         
        # Webpage signals
         self.webpage.setForwardUnsupportedContent(True)
@@ -187,6 +191,11 @@ class Browser:
         if level <= self.verbose_level:
             kwargs = dict(outfd=self.debugfd)
             debug(*args, **kwargs)
+
+    def _on_manager_ssl_errors(self, reply, errors):
+        url = unicode(reply.url().toString())
+        self._debug(WARNING, "SSL certificate error ignored: %s" % url)
+        reply.ignoreSslErrors()
 
     def _manager_create_request(self, operation, request, data):
         url = unicode(request.url().toString())
