@@ -278,6 +278,8 @@ class Browser:
 
     def show(self):
         """Show browser window."""
+        if not self.webview:
+            raise SpynnerError("Cannot show window with webview disabled")
         self.webview.show()
 
     def hide(self):

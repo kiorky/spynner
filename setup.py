@@ -14,8 +14,9 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this software.  If not, see <http://www.gnu.org/licenses/>
+from distutils.core import setup
+from distutils.cmd import Command
 
-from setuptools import setup
 version = "0.0.1"
 
 setup(
@@ -36,7 +37,7 @@ Spynner is a programmatic web browser module for Python with
 Javascript/AJAX support. It is based upon the QtWebKit framework.""",
     data_files = [
         ('share/doc/spynner/examples',
-            ('examples/spynner-gmail.py',)),
+            ('examples/wordreference.py',)),
         ('share/spynner/javascript',
             ('javascript/jquery.min.js',
              'javascript/jquery.simulate.js')),
