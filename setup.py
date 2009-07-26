@@ -34,7 +34,7 @@ setup(
     license="GNU Public License v3.0",
     long_description="""
 Spynner is a programmatic web browser module for Python with
-Javascript/AJAX support. It is based upon the QtWebKit framework.""",
+Javascript/AJAX support based upon the QtWebKit framework.""",
     data_files = [
         ('share/doc/spynner/examples',
             ('examples/wordreference.py',)),
