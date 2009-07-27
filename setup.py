@@ -17,7 +17,7 @@
 from distutils.core import setup
 from distutils.cmd import Command
 
-version = "0.0.1"
+version = "0.0.2"
 
 setup(
     name="spynner",

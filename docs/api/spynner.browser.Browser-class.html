@@ -75,10 +75,8 @@
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td><span class="summary-sig"><a name="__init__"></a><span class="summary-sig-name">__init__</span>(<span class="summary-sig-arg">self</span>,
-        <span class="summary-sig-arg">webview</span>=<span class="summary-sig-default">False</span>,
         <span class="summary-sig-arg">qappargs</span>=<span class="summary-sig-default">None</span>,
-        <span class="summary-sig-arg">verbose_level</span>=<span class="summary-sig-default">0</span>,
-        <span class="summary-sig-arg">debugfd</span>=<span class="summary-sig-default">sys.stderr</span>)</span></td>
+        <span class="summary-sig-arg">debug_level</span>=<span class="summary-sig-default">None</span>)</span></td>
           <td align="right" valign="top">
             
             
@@ -96,7 +94,59 @@
         <tr>
           <td><span class="summary-sig"><a name="load"></a><span class="summary-sig-name">load</span>(<span class="summary-sig-arg">self</span>,
         <span class="summary-sig-arg">url</span>)</span><br />
-      Load a page.</td>
+      Load a web page and return status boolean.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="create_webview"></a><span class="summary-sig-name">create_webview</span>(<span class="summary-sig-arg">self</span>)</span><br />
+      Create a QWebView object and insert current QWebPage.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="destroy_webview"></a><span class="summary-sig-name">destroy_webview</span>(<span class="summary-sig-arg">self</span>)</span><br />
+      Destroy current QWebView.</td>
+          <td align="right" valign="top">
+            
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="spynner.browser.Browser-class.html#set_url_filter" class="summary-sig-name">set_url_filter</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">url_filter</span>)</span><br />
+      Set function to filter URL.</td>
           <td align="right" valign="top">
             
             
@@ -147,7 +197,7 @@
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td><span class="summary-sig"><a name="close"></a><span class="summary-sig-name">close</span>(<span class="summary-sig-arg">self</span>)</span><br />
-      Close browser object</td>
+      Close Browser instance and release resources.</td>
           <td align="right" valign="top">
             
             
@@ -165,7 +215,7 @@
         <tr>
           <td><span class="summary-sig"><a href="spynner.browser.Browser-class.html#wait" class="summary-sig-name">wait</a>(<span class="summary-sig-arg">self</span>,
         <span class="summary-sig-arg">waitime</span>)</span><br />
-      Wait 'waitime' seconds and return.</td>
+      Wait some time.</td>
           <td align="right" valign="top">
             
             
@@ -216,25 +266,8 @@
     </td><td class="summary">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td><span class="summary-sig"><a name="get_html"></a><span class="summary-sig-name">get_html</span>(<span class="summary-sig-arg">self</span>)</span><br />
-      Get current HTML for this web frame.</td>
-          <td align="right" valign="top">
-            
-            
-          </td>
-        </tr>
-      </table>
-      
-    </td>
-  </tr>
-<tr>
-    <td width="15%" align="right" valign="top" class="summary">
-      <span class="summary-type">&nbsp;</span>
-    </td><td class="summary">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
           <td><span class="summary-sig"><a name="get_url"></a><span class="summary-sig-name">get_url</span>(<span class="summary-sig-arg">self</span>)</span><br />
-      Get current URL for this web frame.</td>
+      Get the current URL for this webframe.</td>
           <td align="right" valign="top">
             
             
@@ -253,7 +286,7 @@
           <td><span class="summary-sig"><a name="fill"></a><span class="summary-sig-name">fill</span>(<span class="summary-sig-arg">self</span>,
         <span class="summary-sig-arg">selector</span>,
         <span class="summary-sig-arg">value</span>)</span><br />
-      Fill an input text with value.</td>
+      Fill an input text with a strin value using a jQuery selector.</td>
           <td align="right" valign="top">
             
             
@@ -271,7 +304,7 @@
         <tr>
           <td><span class="summary-sig"><a name="click"></a><span class="summary-sig-name">click</span>(<span class="summary-sig-arg">self</span>,
         <span class="summary-sig-arg">selector</span>)</span><br />
-      Click link or button.</td>
+      Click link or button using a jQuery selector.</td>
           <td align="right" valign="top">
             
             
@@ -289,7 +322,7 @@
         <tr>
           <td><span class="summary-sig"><a name="check"></a><span class="summary-sig-name">check</span>(<span class="summary-sig-arg">self</span>,
         <span class="summary-sig-arg">selector</span>)</span><br />
-      Check input checkbox to value (True by default).</td>
+      Check an input checkbox using a jQuery selector.</td>
           <td align="right" valign="top">
             
             
@@ -307,7 +340,7 @@
         <tr>
           <td><span class="summary-sig"><a name="uncheck"></a><span class="summary-sig-name">uncheck</span>(<span class="summary-sig-arg">self</span>,
         <span class="summary-sig-arg">selector</span>)</span><br />
-      Check input checkbox.</td>
+      Check input checkbox using a jQuery selector</td>
           <td align="right" valign="top">
             
             
@@ -325,7 +358,7 @@
         <tr>
           <td><span class="summary-sig"><a name="choose"></a><span class="summary-sig-name">choose</span>(<span class="summary-sig-arg">self</span>,
         <span class="summary-sig-arg">selector</span>)</span><br />
-      Choose a radio input.</td>
+      Choose a radio input using a jQuery selector.</td>
           <td align="right" valign="top">
             
             
@@ -343,7 +376,7 @@
         <tr>
           <td><span class="summary-sig"><a name="select"></a><span class="summary-sig-name">select</span>(<span class="summary-sig-arg">self</span>,
         <span class="summary-sig-arg">selector</span>)</span><br />
-      Choose a radio input.</td>
+      Choose a radio input using a jQuery selector.</td>
           <td align="right" valign="top">
             
             
@@ -379,7 +412,7 @@
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td><span class="summary-sig"><a name="get_mozilla_cookies"></a><span class="summary-sig-name">get_mozilla_cookies</span>(<span class="summary-sig-arg">self</span>)</span><br />
-      Return string with current cookies in Mozilla format.</td>
+      Return string containing the current cookies in Mozilla format.</td>
           <td align="right" valign="top">
             
             
@@ -418,7 +451,7 @@
         <tr>
           <td><span class="summary-sig"><a name="get_url_from_path"></a><span class="summary-sig-name">get_url_from_path</span>(<span class="summary-sig-arg">self</span>,
         <span class="summary-sig-arg">path</span>)</span><br />
-      Return the URL for a given path using current URL as base.</td>
+      Return the URL for a given path using current URL as base url.</td>
           <td align="right" valign="top">
             
             
@@ -453,6 +486,55 @@
     </td>
   </tr>
 </table>
+<!-- ==================== INSTANCE VARIABLES ==================== -->
+<a name="section-InstanceVariables"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td align="left" colspan="2" class="table-header">
+    <span class="table-header">Instance Variables</span></td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="ignore_ssl_errors"></a><span class="summary-name">ignore_ssl_errors</span> = <code title="True">True</code><br />
+      If True, ignore SSL certificate errors.
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="debug_stream"></a><span class="summary-name">debug_stream</span> = <code title="sys.stderr">sys.stderr</code><br />
+      Stream where debug output will be written.
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="debug_level"></a><span class="summary-name">debug_level</span> = <code title="0">0</code><br />
+      Debug verbose level.
+    </td>
+  </tr>
+</table>
+<!-- ==================== PROPERTIES ==================== -->
+<a name="section-Properties"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td align="left" colspan="2" class="table-header">
+    <span class="table-header">Properties</span></td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="spynner.browser.Browser-class.html#html" class="summary-name">html</a>
+    </td>
+  </tr>
+</table>
 <!-- ==================== METHOD DETAILS ==================== -->
 <a name="section-MethodDetails"></a>
 <table class="details" border="1" cellpadding="3"
@@ -462,6 +544,42 @@
     <span class="table-header">Method Details</span></td>
 </tr>
 </table>
+<a name="set_url_filter"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">set_url_filter</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">url_filter</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    >&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Set function to filter URL.
+
+By default all elements of pages are loaded. That includes stylesheets,
+images and many other elements that the user may not need at all. To
+lighten network bandwidth, we can define a callback that will be called
+every time a new request is created. 
+
+A filter callback example:
+    
+def my_url_filter(operation, url):
+    return url.endswith(&quot;.html&quot;)
+    
+operation -- string with HTTP operation: &quot;get&quot;, &quot;head&quot;, &quot;post&quot; or &quot;put&quot;
+url -- requested URL
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
 <a name="wait"></a>
 <div>
 <table class="details" border="1" cellpadding="3"
@@ -477,9 +595,9 @@
     </td>
   </tr></table>
   
-  <p>Wait 'waitime' seconds and return.</p>
-  <p>The page rendering loop is enabled, so you can call this function to 
-  wait for DOM changes (due to syncronous Javascript events).</p>
+  <p>Wait some time.</p>
+  <p>The event and rendering loop is enabled, so you can call this function
+  to wait for DOM changes (due to syncronous Javascript events).</p>
   <dl class="fields">
   </dl>
 </td></tr></table>
@@ -503,7 +621,7 @@
   </tr></table>
   
   <p>Download given URL using current cookies.</p>
-  <p>If url is a path, preppend current base URL.</p>
+  <p>If url is a path, pre-ppend the current base url.</p>
   <dl class="fields">
   </dl>
 </td></tr></table>
@@ -534,6 +652,30 @@
  <code class="variable-quote">'</code><code class="variable-string">/usr/share/spynner/javascript</code><code class="variable-quote">'</code><code class="variable-group">]</code>
 </pre></td></tr></table>
 </dd>
+  </dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== PROPERTY DETAILS ==================== -->
+<a name="section-PropertyDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td align="left" colspan="2" class="table-header">
+    <span class="table-header">Property Details</span></td>
+</tr>
+</table>
+<a name="html"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <h3 class="epydoc">html</h3>
+  
+  <dl class="fields">
+    <dt>Get Method:</dt>
+    <dd class="value"><span class="summary-sig"><a href="spynner.browser.Browser-class.html#_get_html" class="summary-sig-name" onclick="show_private();">_get_html</a>(<span class="summary-sig-arg">self</span>)</span>
+    </dd>
   </dl>
 </td></tr></table>
 </div>
@@ -569,7 +711,7 @@
 <table border="0" cellpadding="0" cellspacing="0" width="100%%">
   <tr>
     <td align="left" class="footer">
-    Generated by Epydoc 3.0 on Sun Jul 26 16:38:30 2009
+    Generated by Epydoc 3.0 on Mon Jul 27 20:38:09 2009
     </td>
     <td align="right" class="footer">
       <a target="mainFrame" href="http://epydoc.sourceforge.net"
