@@ -148,6 +148,7 @@ class Browser:
         self.webframe = self.webpage.mainFrame()
         self.webview = None
         self.reply = None
+        self._url_filter = None
             
         # Javascript
         directory = first(self.javascript_directories, os.path.isdir)
@@ -201,8 +202,13 @@ class Browser:
         self._debug(INFO, "Request: %s %s" % (operation_name, url))
         for h in request.rawHeaderList():
             self._debug(DEBUG, "  %s: %s" % (h, request.rawHeader(h)))
-        return QNetworkAccessManager.createRequest(self.manager, operation, 
-            request, data)
+        reply = QNetworkAccessManager.createRequest(self.manager, operation, 
+            request, data)        
+        if self._url_filter:
+            if not self._url_filter(self.operation_names[operation], url):
+                self._debug(INFO, "URL filtered by user callback: %s" % url)
+                reply.abort()
+        return reply
 
     def _on_unsupported_content(self, reply):
         url = unicode(reply.url().toString())
@@ -298,9 +304,27 @@ class Browser:
     def destroy_webview(self):
         """Destroy current QWebView."""
         if not self.webview:
-            raise SpynnerError("Cannot remove webview (not initialized)")
+            raise SpynnerError("Cannot destroy webview (not initialized)")
         del self.webview 
 
+    def set_url_filter(self, url_filter):
+        """Set function to filter URL.
+        
+        By default all elements of pages are loaded. That includes stylesheets,
+        images and many other elements that the user may not need at all. To
+        lighten network bandwidth, we can define a callback that will be called
+        every time a new request is created. 
+        
+        A filter callback example:
+            
+        def my_url_filter(operation, url):
+            return url.endswith(".html")
+            
+        operation -- string with HTTP operation: "get", "head", "post" or "put"
+        url -- requested URL
+        """
+        self._url_filter = url_filter
+        
     def show(self):
         """Show browser window."""
         if not self.webview:

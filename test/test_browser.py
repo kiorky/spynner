@@ -154,7 +154,15 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.assertEqual(get_url("/test2.html"), 
             self.browser.get_url_from_path('/test2.html'))
         
-        
+    def test_set_url_filter(self):
+        def url_filter(operation, url):
+            if url == get_url("/test2.html"):
+                return False
+        self.browser.set_url_filter(url_filter)
+        old_html = self.browser.html
+        self.browser.load(get_url("/test2.html"))
+        self.assertEqual(old_html, self.browser.html)
+                    
 def suite():
     return unittest.TestLoader().loadTestsFromTestCase(SpynnerBrowserTest)
 

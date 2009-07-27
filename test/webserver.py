@@ -58,7 +58,8 @@ def get_server(host, port, basedir, verbose=False):
     return HTTPServer((host, port), get_handler_factory(basedir, verbose))
 
 def main():
-    server = get_server('', 8081)
+    basedir = os.path.join(os.path.dirname(__file__), "fixtures")
+    server = get_server('', 8081, basedir)
     print 'started HTTP server'
     server.serve_forever()
 
