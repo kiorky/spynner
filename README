@@ -36,19 +36,23 @@ $ sudo python setup.py install
 
 = Usage =
 
+Here is the API:
+
+http://tokland.freehostia.com/googlecode/spynner/api/
+
 A basic example:
 
 {{{
 import spynner
 
-browser = spynner.Browser(verbose_level=spynner.DEBUG)
+browser = spynner.Browser(debug_level=spynner.DEBUG)
 browser.load("http://www.wordreference.com")
 browser.select("#esen")
 browser.fill("input[name=enit]", "hola")
 browser.click("input[name=b]")
 browser.runjs("console.log('I can run Javascript')")
 browser.runjs("console.log('I can run Jquery: ' + jQuery('a:first').attr('href'))")
-html = browser.get_html()
+print browser.html
 }}}
 
 Sometimes you'll want to see what is going on:
@@ -56,7 +60,8 @@ Sometimes you'll want to see what is going on:
 {{{
 import spynner
 
-browser = spynner.Browser(webview=True, verbose_level=spynner.DEBUG)
+browser = spynner.Browser(debug_level=spynner.DEBUG)
+browser.create_webview()
 browser.show()
 browser.load("http://www.wordreference.com")
 browser.select("#esen")
@@ -88,8 +93,7 @@ import pyquery
 
 browser = spynner.Browser()
 ...
-html = browser.get_html()
-d = pyquery.Pyquery(html)
+d = pyquery.Pyquery(browser.html)
 d.make_links_absolute(browser.get_url())
 href = d("#somelink").attr("href")
 browser.download(href, open("/path/outputfile", "w"))

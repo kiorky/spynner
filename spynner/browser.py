@@ -315,11 +315,8 @@ class Browser:
         lighten network bandwidth, we can define a callback that will be called
         every time a new request is created. 
         
-        A filter callback example:
-            
-        def my_url_filter(operation, url):
-            return url.endswith(".html")
-            
+        The callback must have this signature: my_url_filter(operation, url) 
+                        
         operation -- string with HTTP operation: "get", "head", "post" or "put"
         url -- requested URL
         """
