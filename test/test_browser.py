@@ -69,9 +69,8 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.assertTrue(self.browser.load(get_url("/test1.html")))
         self.assertFalse(self.browser.load("wrong://this-cannot-work"))
 
-    def test_get_html(self):
-        html = self.browser.get_html()
-        self.assertTrue("Test1 HTML" in html)
+    def test_html(self):
+        self.assertTrue("Test1 HTML" in self.browser.html)
 
     def test_get_url(self):
         self.assertEqual(get_url("/test1.html"), self.browser.get_url())
@@ -117,7 +116,7 @@ class SpynnerBrowserTest(unittest.TestCase):
     def test_runjs(self):
         jscode = "document.getElementById('link').innerHTML = 'hello there!'" 
         self.browser.runjs(jscode)
-        self.assertTrue("hello there!" in self.browser.get_html())
+        self.assertTrue("hello there!" in self.browser.html)
 
     def test_get_mozilla_cookies(self):
         cookies = self.browser.get_mozilla_cookies()

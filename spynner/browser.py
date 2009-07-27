@@ -244,7 +244,7 @@ class Browser:
         self._load_status = successful  
         status = {True: "successful", False: "error"}[successful]
         self._debug(INFO, "Page load finished (%d bytes): %s (%s)" % 
-            (len(self.get_html()), self.get_url(), status))
+            (len(self.html), self.get_url(), status))
 
     def _wait_page_load(self, timeout=None):
         self._load_status = None
@@ -275,6 +275,9 @@ class Browser:
     def _get_protocol(self, url):
         match = re.match("^(\w+)://", url)
         return (match.group(1) if match else None)
+
+    def _get_html(self):
+        return unicode(self.webframe.toHtml())
         
     # Public interface
 
@@ -339,10 +342,6 @@ class Browser:
         while self.webview:
             self.app.processEvents()
             time.sleep(self.event_looptime)
-
-    def get_html(self):
-        """Get the current HTML for this webframe."""
-        return unicode(self.webframe.toHtml())
     
     def get_url(self):
         """Get the current URL for this webframe."""
@@ -406,3 +405,5 @@ class Browser:
     def get_url_from_path(self, path):
         """Return the URL for a given path using current URL as base url."""
         return urlparse.urljoin(self.get_url(), path)
+    
+    html = property(_get_html)
