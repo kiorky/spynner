@@ -44,8 +44,8 @@ class SpynnerBrowserTest(unittest.TestCase):
     def setUp(self):
         self.debugoutput = StringIO()
         webview = False
-        self.browser = spynner.Browser(webview=webview,
-        verbose_level=spynner.DEBUG, debugfd=self.debugoutput)
+        self.browser = spynner.Browser(webview=webview, debug_level=spynner.DEBUG)
+        self.browser.debug_stream = self.debugoutput
         if webview: 
             self.browser.show()
         self.browser.load(get_url("/test1.html"))
@@ -60,7 +60,7 @@ class SpynnerBrowserTest(unittest.TestCase):
     # Tests
     
     def test_init_with_webview(self):
-        browser = spynner.Browser(webview=True, verbose_level=spynner.DEBUG)
+        browser = spynner.Browser(webview=True, debug_level=spynner.DEBUG)
         html = self.browser.load(get_url("/test1.html"))
         browser.webview.show = lambda *args: None
         browser.show()

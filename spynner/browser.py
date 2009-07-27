@@ -121,7 +121,14 @@ class NetworkCookieJar(QNetworkCookieJar):
           if not cookie.isSessionCookie()]
         return "\n".join(header + lines)
 
-class Browser:
+class Browser:  
+    ignore_ssl_errors = True
+    """@ivar: If True, ignore SSL certificate errors."""
+    debug_stream = sys.stderr
+    """@ivar: Stream where debug output will be written."""
+    debug_level = ERROR
+    """@ivar: Debug verbose level."""
+    
     javascript_files = [
         "jquery.min.js", 
         "jquery.simulate.js"
@@ -132,12 +139,11 @@ class Browser:
         os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
     
-    def __init__(self, webview=False, qappargs=None, ignore_ssl_errors=True,
-            verbose_level=ERROR, debugfd=sys.stderr):
-        self.verbose_level = verbose_level
+    def __init__(self, webview=False, qappargs=None, debug_level=None):
         self.event_looptime = 0.01
-        self.debugfd = debugfd
         self.app = QApplication(qappargs or [])
+        if debug_level is not None:
+            self.debug_level = debug_level
         self.webpage = QWebPage()
         self.webframe = self.webpage.mainFrame()
         if webview:
@@ -170,10 +176,9 @@ class Browser:
         self.manager.setCookieJar(self.cookiesjar)
         self.operation_names = dict((getattr(QNetworkAccessManager, s+"Operation"),
             s.lower()) for s in ("Get", "Head", "Post", "Put"))
-        if ignore_ssl_errors:
-            self.manager.connect(self.manager, 
-                SIGNAL("sslErrors (QNetworkReply *, const QList<QSslError> &)"),
-                self._on_manager_ssl_errors)
+        self.manager.connect(self.manager, 
+            SIGNAL("sslErrors (QNetworkReply *, const QList<QSslError> &)"),
+            self._on_manager_ssl_errors)
         
        # Webpage signals
         self.webpage.setForwardUnsupportedContent(True)
@@ -188,14 +193,15 @@ class Browser:
             self._on_reply)
 
     def _debug(self, level, *args):
-        if level <= self.verbose_level:
-            kwargs = dict(outfd=self.debugfd)
+        if level <= self.debug_level:
+            kwargs = dict(outfd=self.debug_stream)
             debug(*args, **kwargs)
 
     def _on_manager_ssl_errors(self, reply, errors):
-        url = unicode(reply.url().toString())
-        self._debug(WARNING, "SSL certificate error ignored: %s" % url)
-        reply.ignoreSslErrors()
+        if self.ignore_ssl_errors:
+            url = unicode(reply.url().toString())
+            self._debug(WARNING, "SSL certificate error ignored: %s" % url)
+            reply.ignoreSslErrors()
 
     def _manager_create_request(self, operation, request, data):
         url = unicode(request.url().toString())
