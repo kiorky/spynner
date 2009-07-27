@@ -43,11 +43,8 @@ def start_threaded_server(port):
 class SpynnerBrowserTest(unittest.TestCase):    
     def setUp(self):
         self.debugoutput = StringIO()
-        webview = False
-        self.browser = spynner.Browser(webview=webview, debug_level=spynner.DEBUG)
+        self.browser = spynner.Browser(debug_level=spynner.DEBUG)
         self.browser.debug_stream = self.debugoutput
-        if webview: 
-            self.browser.show()
         self.browser.load(get_url("/test1.html"))
 
     def tearDown(self):
@@ -60,18 +57,18 @@ class SpynnerBrowserTest(unittest.TestCase):
     # Tests
     
     def test_init_with_webview(self):
-        browser = spynner.Browser(webview=True, debug_level=spynner.DEBUG)
+        self.browser.create_webview()
         html = self.browser.load(get_url("/test1.html"))
-        browser.webview.show = lambda *args: None
-        browser.show()
-        browser.wait(0.01)
-        browser.hide()        
-        browser.close()
+        self.browser.webview.show = lambda *args: None
+        self.browser.show()
+        self.browser.wait(0.01)
+        self.browser.hide()
+        self.browser.destroy_webview()        
 
     def test_load_should_return_status_boolean(self):
         self.assertTrue(self.browser.load(get_url("/test1.html")))
         self.assertFalse(self.browser.load("wrong://this-cannot-work"))
-                                
+
     def test_get_html(self):
         html = self.browser.get_html()
         self.assertTrue("Test1 HTML" in html)

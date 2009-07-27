@@ -139,22 +139,14 @@ class Browser:
         os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
     
-    def __init__(self, webview=False, qappargs=None, debug_level=None):
+    def __init__(self, qappargs=None, debug_level=None):
         self.event_looptime = 0.01
         self.app = QApplication(qappargs or [])
         if debug_level is not None:
             self.debug_level = debug_level
         self.webpage = QWebPage()
         self.webframe = self.webpage.mainFrame()
-        if webview:
-            self.webview = QWebView()
-            self.webview.setPage(self.webpage)
-            window = self.webview.window()
-            window.setAttribute(Qt.WA_DeleteOnClose)
-            window.connect(window, SIGNAL('destroyed(QObject *)'),
-                self._on_webview_destroyed)
-        else:
-            self.webview = None
+        self.webview = None
         self.reply = None
             
         # Javascript
@@ -291,18 +283,35 @@ class Browser:
         self.webframe.load(QUrl(url))
         return self._wait_page_load()
 
+    def create_webview(self):
+        """Create a QWebView object and insert current QWebPage."""
+        self.webview = QWebView()
+        self.webview.setPage(self.webpage)
+        window = self.webview.window()
+        window.setAttribute(Qt.WA_DeleteOnClose)
+        window.connect(window, SIGNAL('destroyed(QObject *)'),
+            self._on_webview_destroyed)
+
+    def destroy_webview(self):
+        """Destroy current QWebView."""
+        if not self.webview:
+            raise SpynnerError("Cannot remove webview (not initialized)")
+        del self.webview 
+
     def show(self):
         """Show browser window."""
         if not self.webview:
-            raise SpynnerError("Cannot show window with webview disabled")
+            raise SpynnerError("Cannot show window when webview disabled")
         self.webview.show()
 
     def hide(self):
         """Hide browser window."""
+        if not self.webview:
+            raise SpynnerError("Cannot hide window when webview disabled")
         self.webview.hide()
 
     def close(self):
-        """Close browser object and release resources."""
+        """Close Browser instance and release resources."""
         if self.webview:
             del self.webview
         if self.webpage:
