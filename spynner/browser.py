@@ -435,7 +435,13 @@ class Browser:
         self._runjs_on_jquery("fill", JSCODE_EXTRA)
 
     def click(self, selector, wait_page_load=False):
-        """Click link or button using a jQuery selector."""
+        """
+        Click link or button using a jQuery selector.
+        
+        Usually a click will load a new page, but by default this function 
+        does not wait for page load. Either run with wait_page_load=True
+        or call Browser.wait_page_load afterwards.
+        """
         JSCODE_EXTRA = "jQuery('%s').simulate('click')" % selector
         self._runjs_on_jquery("click", JSCODE_EXTRA)
         if wait_page_load:
