@@ -129,6 +129,9 @@ class Browser:
     debug_level = ERROR
     """@ivar: Debug verbose level."""
     
+    event_looptime = 0.01
+    """@ivar: Event loop dispatcher loop delay."""
+    
     javascript_files = [
         "jquery.min.js", 
         "jquery.simulate.js"
@@ -140,7 +143,6 @@ class Browser:
     ]
     
     def __init__(self, qappargs=None, debug_level=None):
-        self.event_looptime = 0.01
         self.app = QApplication(qappargs or [])
         if debug_level is not None:
             self.debug_level = debug_level
@@ -171,8 +173,9 @@ class Browser:
         self.webpage.setNetworkAccessManager(self.manager)            
         self.cookiesjar = NetworkCookieJar()
         self.manager.setCookieJar(self.cookiesjar)
-        self.operation_names = dict((getattr(QNetworkAccessManager, s+"Operation"),
-            s.lower()) for s in ("Get", "Head", "Post", "Put"))
+        self.operation_names = dict(
+            (getattr(QNetworkAccessManager, s + "Operation"), s.lower()) 
+            for s in ("Get", "Head", "Post", "Put"))
         self.manager.connect(self.manager, 
             SIGNAL("sslErrors (QNetworkReply *, const QList<QSslError> &)"),
             self._on_manager_ssl_errors)
@@ -326,6 +329,10 @@ class Browser:
         self.webframe.load(QUrl(url))
         return self._wait_page_load()
 
+    def wait_page_load(self, timeout=None):
+        """Wait until a new page is loaded."""
+        return self._wait_page_load(timeout)
+
     def create_webview(self):
         """Create a QWebView object and insert current QWebPage."""
         self.webview = QWebView()
@@ -364,14 +371,13 @@ class Browser:
         you are working pops Javascript prompts, be sure to set a callback
         for them. Signature: 
         
-        javascript_prompt_callback(url, message, defaultvalue, result)
+        javascript_prompt_callback(url, message, defaultvalue)
         
             - url: Url where the popup prompt was launched.
             - message: String message.
-            - defaultvalue: Default value
-            - result: String to return 
+            - defaultvalue: Default value for prompt answer
             
-        Return None to cancel prompt.
+        Return string or None to cancel prompt.
         """
         self._javascript_prompt_callback = callback
         
@@ -413,7 +419,7 @@ class Browser:
     def wait(self, waitime):
         """Wait some time.
         
-        The event and rendering loop is enabled, so you can call this function
+        The event and rendering loop are enabled, so you can call this function
         to wait for DOM changes (due to syncronous Javascript events)."""   
         itime = time.time()
         while time.time() - itime < waitime:
@@ -446,10 +452,6 @@ class Browser:
         self._runjs_on_jquery("click", jscode)
         if wait_page_load:
             return self._wait_page_load()         
-
-    def wait_page_load(self, timeout=None):
-        """Wait until a new page is loaded."""
-        return self._wait_page_load(timeout)
 
     def check(self, selector):
         """Check an input checkbox using a jQuery selector."""
@@ -500,7 +502,7 @@ class Browser:
         return urlparse.urljoin(self.url, path)
     
     html = property(_get_html)
-    """Return rendered HTML in current page."""
+    """Rendered HTML in current page."""
     
     url = property(_get_url)
     """Current URL."""    
