@@ -431,8 +431,8 @@ class Browser:
     
     def fill(self, selector, value):
         """Fill an input text with a strin value using a jQuery selector."""
-        JSCODE_EXTRA = "jQuery('%s').val('%s')" % (selector, value)
-        self._runjs_on_jquery("fill", JSCODE_EXTRA)
+        jscode = "jQuery('%s').val('%s')" % (selector, value)
+        self._runjs_on_jquery("fill", jscode)
 
     def click(self, selector, wait_page_load=False):
         """
@@ -442,8 +442,8 @@ class Browser:
         does not wait for page load. Either run with wait_page_load=True
         or call Browser.wait_page_load afterwards.
         """
-        JSCODE_EXTRA = "jQuery('%s').simulate('click')" % selector
-        self._runjs_on_jquery("click", JSCODE_EXTRA)
+        jscode = "jQuery('%s').simulate('click')" % selector
+        self._runjs_on_jquery("click", jscode)
         if wait_page_load:
             return self._wait_page_load()         
 
@@ -453,29 +453,29 @@ class Browser:
 
     def check(self, selector):
         """Check an input checkbox using a jQuery selector."""
-        JSCODE_EXTRA = "jQuery('%s').attr('checked', true)" % selector
-        self._runjs_on_jquery("check", JSCODE_EXTRA)
+        jscode = "jQuery('%s').attr('checked', true)" % selector
+        self._runjs_on_jquery("check", jscode)
 
     def uncheck(self, selector):
         """Check input checkbox using a jQuery selector"""
-        JSCODE_EXTRA = "jQuery('%s').attr('checked', false)" % selector
-        self._runjs_on_jquery("uncheck", JSCODE_EXTRA)
+        jscode = "jQuery('%s').attr('checked', false)" % selector
+        self._runjs_on_jquery("uncheck", jscode)
 
     def choose(self, selector):        
         """Choose a radio input using a jQuery selector."""
-        JSCODE_EXTRA = "jQuery('%s').simulate('click')" % selector
-        self._runjs_on_jquery("choose", JSCODE_EXTRA)
+        jscode = "jQuery('%s').simulate('click')" % selector
+        self._runjs_on_jquery("choose", jscode)
 
     def select(self, selector):        
         """Choose a radio input using a jQuery selector."""
-        JSCODE_EXTRA = "jQuery('%s').attr('selected', 'selected')" % selector
-        self._runjs_on_jquery("select", JSCODE_EXTRA)
+        jscode = "jQuery('%s').attr('selected', 'selected')" % selector
+        self._runjs_on_jquery("select", jscode)
         
-    def runjs(self, JSCODE_EXTRA, debug=True):
+    def runjs(self, jscode, debug=True):
         """Run arbitrary Javascript code into the current frame."""
         if debug:
-            self._debug(DEBUG, "Run Javascript code: %s" % JSCODE_EXTRA)
-        return self.webpage.mainFrame().evaluateJavaScript(JSCODE_EXTRA)
+            self._debug(DEBUG, "Run Javascript code: %s" % jscode)
+        return self.webpage.mainFrame().evaluateJavaScript(jscode)
 
     def get_mozilla_cookies(self):
         """Return string containing the current cookies in Mozilla format.""" 
