@@ -44,6 +44,7 @@ class SpynnerBrowserTest(unittest.TestCase):
     def setUp(self):
         self.debugoutput = StringIO()
         self.browser = spynner.Browser(debug_level=spynner.DEBUG)
+        #self.browser.create_webview(); self.browser.show()
         self.browser.debug_stream = self.debugoutput
         self.browser.load(get_url("/test1.html"))
 
@@ -73,7 +74,7 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.assertTrue("Test1 HTML" in self.browser.html)
 
     def test_get_url(self):
-        self.assertEqual(get_url("/test1.html"), self.browser.get_url())
+        self.assertEqual(get_url("/test1.html"), self.browser.url)
 
     def test_wait_page_load(self):
         self.browser.runjs("window.location = '/test2.html'")
@@ -85,7 +86,8 @@ class SpynnerBrowserTest(unittest.TestCase):
         
     def test_click(self):
         self.browser.click("#link")
-        self.assertEqual(get_url('/test3.html'), self.browser.get_url())            
+        self.browser.wait_page_load()
+        self.assertEqual(get_url('/test3.html'), self.browser.url)            
 
     def test_check(self):
         self.browser.check("#check")
@@ -110,8 +112,9 @@ class SpynnerBrowserTest(unittest.TestCase):
     def test_fill(self):
         self.browser.fill("input[name=user]", "myname")
         self.browser.click("#submit")
+        self.browser.wait_page_load()
         self.assertEqual(get_url('/test2.html?user=myname'), 
-            self.browser.get_url())            
+            self.browser.url)            
                 
     def test_runjs(self):
         jscode = "document.getElementById('link').innerHTML = 'hello there!'" 
@@ -162,6 +165,36 @@ class SpynnerBrowserTest(unittest.TestCase):
         old_html = self.browser.html
         self.browser.load(get_url("/test2.html"))
         self.assertEqual(old_html, self.browser.html)
+        
+    def test_javascript_confirm(self):
+        def confirm_no(url, message):
+            return False
+        self.browser.set_javascript_confirm_callback(confirm_no)                
+        self.browser.click("#link_confirmed")
+        self.assertEqual(get_url("/test1.html"), self.browser.url)
+        
+        def confirm_yes(url, message):
+            return True
+        self.browser.set_javascript_confirm_callback(confirm_yes)                
+        self.browser.click("#link_confirmed")
+        self.browser.wait_page_load()
+        self.assertEqual(get_url("/test3.html"), self.browser.url)
+
+    def test_javascript_prompt(self):
+        def answer(url, message, defaultvalue):
+            return "My answer"
+        self.browser.set_javascript_prompt_callback(answer)                
+        self.browser.click("#link_prompt")
+        self.assertTrue("User answer: My answer" in self.get_debug())            
+
+        def cancel_answer(url, message, defaultvalue):
+            return
+        self.browser.set_javascript_prompt_callback(cancel_answer)                
+        self.debugoutput.seek(0)
+        self.debugoutput.truncate()
+        self.browser.click("#link_prompt")
+        self.assertTrue("User answer" not in self.get_debug())            
+        
                     
 def suite():
     return unittest.TestLoader().loadTestsFromTestCase(SpynnerBrowserTest)

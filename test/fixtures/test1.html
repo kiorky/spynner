@@ -31,5 +31,7 @@
     </select>    
      
     <a id="link" href="/test3.html">link</a>
+    <a id="link_confirmed" href="/test3.html" onclick="return(confirm('are you sure?'));">link confirmed</a>
+    <a id="link_prompt" href="/test3.html" onclick="var answer = prompt('enter a number', '10'); if (answer != null) console.log('User answer: ' +  answer); return false;">link prompt</a>
   </body>
 </html>

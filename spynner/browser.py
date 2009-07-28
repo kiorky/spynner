@@ -160,6 +160,10 @@ class Browser:
 
         self.webpage.javaScriptAlert = self._javascript_alert                
         self.webpage.javaScriptConsoleMessage = self._javascript_console_message
+        self.webpage.javaScriptConfirm = self._javascript_confirm
+        self._javascript_confirm_callback = None
+        self.webpage.javaScriptPrompt = self._javascript_prompt
+        self._javascript_confirm_prompt = None
         
         # Manager and cookies
         self.manager = QNetworkAccessManager()
@@ -242,7 +246,35 @@ class Browser:
                 (sourceid, line, message))
         else:
             self._debug(INFO, "Javascript console: %s" % message)
-                                             
+
+    def _javascript_confirm(self, webframe, message):
+        smessage = unicode(message)
+        url = webframe.url()
+        self._debug(INFO, "Javascript confirm (webframe url = %s): %s" % 
+            (url, smessage))
+        if self._javascript_confirm_callback:
+            value = self._javascript_confirm_callback(url, smessage)
+            self._debug(INFO, "Javascript confirm callback returned: %s" % value)
+            return value 
+        return QWebPage.javaScriptConfirm(self.webpage, webframe, message)
+
+    def _javascript_prompt(self, webframe, message, defaultvalue, result):
+        url = webframe.url()
+        smessage = unicode(message)
+        self._debug(INFO, "Javascript prompt (webframe url = %s): %s" % 
+            (url, smessage))
+        if self._javascript_prompt_callback:
+            value = self._javascript_prompt_callback(url, smessage, defaultvalue)
+            self._debug(INFO, "Javascript prompt callback returned: %s" % value)
+            if value in (False, None):
+                return False
+            result.clear()
+            result.append(value)
+            return True
+        return QWebPage.javaScriptPrompt(self.webpage, webframe, message,
+            defaultvalue, result)
+
+        
     def _on_webview_destroyed(self, window):
         self.webview = None
                                              
@@ -250,7 +282,7 @@ class Browser:
         self._load_status = successful  
         status = {True: "successful", False: "error"}[successful]
         self._debug(INFO, "Page load finished (%d bytes): %s (%s)" % 
-            (len(self.html), self.get_url(), status))
+            (len(self.html), self.url, status))
 
     def _wait_page_load(self, timeout=None):
         self._load_status = None
@@ -265,7 +297,6 @@ class Browser:
         return self._load_status
 
     def _runjs_on_jquery(self, name, code):
-        """Check input checkbox to value (True by default)."""
         def _get_js_obj_length(res):
             if res.type() != res.Map:
                 return False
@@ -284,6 +315,9 @@ class Browser:
 
     def _get_html(self):
         return unicode(self.webframe.toHtml())
+
+    def _get_url(self):
+        return unicode(self.webframe.url().toString())
         
     # Public interface
 
@@ -307,8 +341,43 @@ class Browser:
             raise SpynnerError("Cannot destroy webview (not initialized)")
         del self.webview 
 
+    def set_javascript_confirm_callback(self, callback):
+        """
+        Set function callback for Javascript confirm.
+        
+        By default Javascript confirmations are not answered. If the webpage
+        you are working pops Javascript confirmations, be sure to set a callback
+        for them. Signature: javascript_confirm_callback(url, message)
+        
+            - url: Url where the popup was launched.        
+            - message: String message.
+        
+        Return boolean (True = yes, False = no)
+        """
+        self._javascript_confirm_callback = callback
+
+    def set_javascript_prompt_callback(self, callback):
+        """
+        Set function callback for Javascript prompt.
+        
+        By default Javascript confirmations are not answered. If the webpage
+        you are working pops Javascript prompts, be sure to set a callback
+        for them. Signature: 
+        
+        javascript_prompt_callback(url, message, defaultvalue, result)
+        
+            - url: Url where the popup prompt was launched.
+            - message: String message.
+            - defaultvalue: Default value
+            - result: String to return 
+            
+        Return None to cancel prompt.
+        """
+        self._javascript_prompt_callback = callback
+        
     def set_url_filter(self, url_filter):
-        """Set function to filter URL.
+        """
+        Set function to filter URL.
         
         By default all elements of pages are loaded. That includes stylesheets,
         images and many other elements that the user may not need at all. To
@@ -317,8 +386,8 @@ class Browser:
         
         The callback must have this signature: my_url_filter(operation, url) 
                         
-        operation -- string with HTTP operation: "get", "head", "post" or "put"
-        url -- requested URL
+            - operation: string with HTTP operation: "get", "head", "post" or "put"
+            - url: requested URL
         """
         self._url_filter = url_filter
         
@@ -350,11 +419,7 @@ class Browser:
         while time.time() - itime < waitime:
             self.app.processEvents()
             time.sleep(self.event_looptime)        
-
-    def wait_page_load(self, timeout=None):
-        """Wait until a new page is loaded."""
-        return self._wait_page_load(timeout)
-                
+               
     def browse(self):
         """Let the user browse the current page (infinite loop).""" 
         if not self.webview:
@@ -364,20 +429,21 @@ class Browser:
             self.app.processEvents()
             time.sleep(self.event_looptime)
     
-    def get_url(self):
-        """Get the current URL for this webframe."""
-        return unicode(self.webframe.url().toString())
-
     def fill(self, selector, value):
         """Fill an input text with a strin value using a jQuery selector."""
         JSCODE_EXTRA = "jQuery('%s').val('%s')" % (selector, value)
         self._runjs_on_jquery("fill", JSCODE_EXTRA)
 
-    def click(self, selector):
+    def click(self, selector, wait_page_load=False):
         """Click link or button using a jQuery selector."""
         JSCODE_EXTRA = "jQuery('%s').simulate('click')" % selector
         self._runjs_on_jquery("click", JSCODE_EXTRA)
-        return self._wait_page_load()         
+        if wait_page_load:
+            return self._wait_page_load()         
+
+    def wait_page_load(self, timeout=None):
+        """Wait until a new page is loaded."""
+        return self._wait_page_load(timeout)
 
     def check(self, selector):
         """Check an input checkbox using a jQuery selector."""
@@ -425,6 +491,10 @@ class Browser:
 
     def get_url_from_path(self, path):
         """Return the URL for a given path using current URL as base url."""
-        return urlparse.urljoin(self.get_url(), path)
+        return urlparse.urljoin(self.url, path)
     
     html = property(_get_html)
+    """Return rendered HTML in current page."""
+    
+    url = property(_get_url)
+    """Current URL."""    
