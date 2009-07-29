@@ -63,7 +63,7 @@ def debug(obj, linefeed=True, outfd=sys.stderr, outputencoding="utf8"):
     outfd.flush()
      
 def get_opener(mozilla_cookies=None):
-    """Return a urllib2 opener object using (optional) mozilla cookies string"""
+    """Return a urllib2.opener object using (optional) mozilla cookies string"""
     if not mozilla_cookies:
         return urllib2.build_opener()
     cookies = cookielib.MozillaCookieJar()
@@ -143,27 +143,26 @@ class Browser:
     event_looptime = 0.01
     """@ivar: Event loop dispatcher loop delay."""
     
-    javascript_files = [
+    _javascript_files = [
         "jquery.min.js", 
         "jquery.simulate.js"
     ]
 
-    javascript_directories = [
+    _javascript_directories = [
         os.path.join(os.path.dirname(__file__), "../javascript"),
         os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
     
     def __init__(self, qappargs=None, debug_level=None, url_filter=None,
             html_parser=None, soup_selector=None):
-        """
+        """        
+        Init a Browser instance.
         
-        Init a browser object.
-        
-        @param qappargs: Arguments for QApplication
-        @param debug_level: spynner.[ERROR|WARNING|INFO|DEBUG] (ERROR by default)
-        @param url_filter: Callback to filter URL. See set_url_filter.
-        @param html_parser: Callback to create HTML soup. See set_html_parser.
-        @param soup_selector: How to get selectors in soup. See set_html_parser.
+        @param qappargs: Arguments for QApplication constructor.
+        @param debug_level: Debug level logging (ERROR by default)
+        @param url_filter: Callback to filter URLs. See L{set_url_filter}.
+        @param html_parser: Callback to build HTML soup. See L{set_html_parser}.
+        @param soup_selector: How to get selectors in soup. See L{set_html_parser}.        
         """        
         self.app = QApplication(qappargs or [])
         if debug_level is not None:
@@ -178,12 +177,12 @@ class Browser:
         self._soup_selector = soup_selector
             
         # Javascript
-        directory = first(self.javascript_directories, os.path.isdir)
+        directory = first(self._javascript_directories, os.path.isdir)
         if not directory:
             raise SpynnerError("Cannot find javascript directory: %s" %
-                self.javascript_directories)           
+                self._javascript_directories)           
         self.javascript = "".join(open(os.path.join(directory, fn)).read() 
-            for fn in self.javascript_files)
+            for fn in self._javascript_files)
 
         self.webpage.javaScriptAlert = self._javascript_alert                
         self.webpage.javaScriptConsoleMessage = self._javascript_console_message
@@ -300,7 +299,6 @@ class Browser:
             return True
         return QWebPage.javaScriptPrompt(self.webpage, webframe, message,
             defaultvalue, result)
-
         
     def _on_webview_destroyed(self, window):
         self.webview = None
@@ -352,16 +350,60 @@ class Browser:
         return unicode(self.webframe.url().toString())
         
     # Public interface
+    
+    #{ Basic interaction with browser
 
     def load(self, url):
         """Load a web page and return status boolean."""
         self.webframe.load(QUrl(url))
         return self._wait_page_load()
 
+    def click(self, selector, wait_page_load=False):
+        """
+        Click link or button using a jQuery selector.
+        
+        @param wait_page_load: If True, it will wait until a new page is loaded.
+                      
+        @attention: By default this method will not wait for a page to load. 
+        If you are clicking a link or submit button you must call this
+        method with wait_page_load enabled or alternatively call 
+        Browser#wait_page_load afterwards.
+        """
+        jscode = "jQuery('%s').simulate('click')" % selector
+        self._runjs_on_jquery("click", jscode)
+        if wait_page_load:
+            return self._wait_page_load()         
+
     def wait_page_load(self, timeout=None):
-        """Wait until a new page is loaded."""
+        """Wait until a new page is loaded.
+        
+        @return: Boolean state
+        @raise SpynerTimeout: When timeout is reached.
+        """
         return self._wait_page_load(timeout)
 
+    def wait(self, waitime):
+        """Wait some time.
+        
+        This is an active wait, the event and events loop will be run.
+        This function is useful to wait for syncronous Javascript events.
+        """   
+        itime = time.time()
+        while time.time() - itime < waitime:
+            self.app.processEvents()
+            time.sleep(self.event_looptime)        
+
+    def close(self):
+        """Close Browser instance and release resources."""
+        if self.webview:
+            del self.webview
+        if self.webpage:
+            del self.webpage
+
+    #}
+                      
+    #{ Webview 
+    
     def create_webview(self):
         """Create a QWebView object and insert current QWebPage."""
         self.webview = QWebView()
@@ -377,55 +419,6 @@ class Browser:
             raise SpynnerError("Cannot destroy webview (not initialized)")
         del self.webview 
 
-    def set_javascript_confirm_callback(self, callback):
-        """
-        Set function callback for Javascript confirm.
-        
-        By default Javascript confirmations are not answered. If the webpage
-        you are working pops Javascript confirmations, be sure to set a callback
-        for them. Signature: javascript_confirm_callback(url, message)
-        
-            - url: Url where the popup was launched.        
-            - message: String message.
-        
-        Return boolean (True = yes, False = no)
-        """
-        self._javascript_confirm_callback = callback
-
-    def set_javascript_prompt_callback(self, callback):
-        """
-        Set function callback for Javascript prompt.
-        
-        By default Javascript confirmations are not answered. If the webpage
-        you are working pops Javascript prompts, be sure to set a callback
-        for them. Signature: 
-        
-        javascript_prompt_callback(url, message, defaultvalue)
-        
-            - url: Url where the popup prompt was launched.
-            - message: String message.
-            - defaultvalue: Default value for prompt answer
-            
-        Return string or None to cancel prompt.
-        """
-        self._javascript_prompt_callback = callback
-        
-    def set_url_filter(self, url_filter):
-        """
-        Set function to filter URL.
-        
-        By default all elements of pages are loaded. That includes stylesheets,
-        images and many other elements that the user may not need at all. To
-        lighten network bandwidth, we can define a callback that will be called
-        every time a new request is created. 
-        
-        The callback must have this signature: my_url_filter(operation, url) 
-                        
-            - operation: string with HTTP operation: "get", "head", "post" or "put"
-            - url: requested URL
-        """
-        self._url_filter = url_filter
-        
     def show(self):
         """Show browser window."""
         if not self.webview:
@@ -438,23 +431,6 @@ class Browser:
             raise SpynnerError("Cannot hide window when webview disabled")
         self.webview.hide()
 
-    def close(self):
-        """Close Browser instance and release resources."""
-        if self.webview:
-            del self.webview
-        if self.webpage:
-            del self.webpage
-        
-    def wait(self, waitime):
-        """Wait some time.
-        
-        The event and rendering loop are enabled, so you can call this function
-        to wait for DOM changes (due to syncronous Javascript events)."""   
-        itime = time.time()
-        while time.time() - itime < waitime:
-            self.app.processEvents()
-            time.sleep(self.event_looptime)        
-               
     def browse(self):
         """Let the user browse the current page (infinite loop).""" 
         if not self.webview:
@@ -463,24 +439,15 @@ class Browser:
         while self.webview:
             self.app.processEvents()
             time.sleep(self.event_looptime)
+
+    #}
+                        
+    #{ Form manipulation and submit
     
     def fill(self, selector, value):
         """Fill an input text with a string value using a jQuery selector."""
         jscode = "jQuery('%s').val('%s')" % (selector, value)
         self._runjs_on_jquery("fill", jscode)
-
-    def click(self, selector, wait_page_load=False):
-        """
-        Click link or button using a jQuery selector.
-        
-        Usually a click will load a new page, but by default this function 
-        does not wait for page load. Either run with wait_page_load=True
-        or call Browser.wait_page_load afterwards.
-        """
-        jscode = "jQuery('%s').simulate('click')" % selector
-        self._runjs_on_jquery("click", jscode)
-        if wait_page_load:
-            return self._wait_page_load()         
 
     def check(self, selector):
         """Check an input checkbox using a jQuery selector."""
@@ -502,16 +469,63 @@ class Browser:
         jscode = "jQuery('%s').attr('selected', 'selected')" % selector
         self._runjs_on_jquery("select", jscode)
         
+    #}
+    
+    #{ Javascript 
+    
     def runjs(self, jscode, debug=True):
         """Run arbitrary Javascript code into the current frame."""
         if debug:
             self._debug(DEBUG, "Run Javascript code: %s" % jscode)
         return self.webpage.mainFrame().evaluateJavaScript(jscode)
 
+    def set_javascript_confirm_callback(self, callback):
+        """
+        Set function callback for Javascript confirm.
+        
+        By default Javascript confirmations are not answered. If the webpage
+        you are working pops Javascript confirmations, be sure to set a callback
+        for them. 
+        
+        Calback signature: C{javascript_confirm_callback(url, message)}
+        
+        @param url: Url where the popup was launched.        
+        @param message: String message.
+        
+        The callback should return a boolean (True means 'yes', False means 'no')
+        """
+        self._javascript_confirm_callback = callback
+
+    def set_javascript_prompt_callback(self, callback):
+        """
+        Set function callback for Javascript prompt.
+        
+        By default Javascript confirmations are not answered. If the webpage
+        you are working pops Javascript prompts, be sure to set a callback
+        for them. 
+        
+        Callback signature: C{javascript_prompt_callback(url, message, defaultvalue)}
+        
+        @param url: Url where the popup prompt was launched.
+        @param message: String message.
+        @param defaultvalue: Default value for prompt answer
+            
+        Callback should return string or None to cancel prompt.
+        """
+        self._javascript_prompt_callback = callback
+
+    #}
+    
+    #{ Cookies
+    
     def get_mozilla_cookies(self):
         """Return string containing the current cookies in Mozilla format.""" 
         return self.cookiesjar.mozillaCookies()
-            
+
+    #}
+    
+    #{ Download
+                
     def download(self, url, outfd=None, bufsize=4096*16, cookies=None):
         """Download given URL using current cookies.
         
@@ -525,14 +539,14 @@ class Browser:
         self._debug(INFO, "Start download: %s" % url)        
         self._debug(DEBUG, "Using cookies: %s" % cookies)
         return download(url, get_opener(cookies), outfd, bufsize)
-
-    def get_url_from_path(self, path):
-        """Return the URL for a given path using current URL as base url."""
-        return urlparse.urljoin(self.url, path)
+    
+    #}
+        
+    #{ HTML and soup parsing
     
     def set_html_parser(self, parser, soup_selector=None):
         """
-        Set HTML parser used by the soup property.
+        Set HTML parser used by the L{soup}.
         
         When a HTML parser is set for a Browser, the property soup returns
         the current HTML soup (the result of parsing the HTML).
@@ -545,9 +559,10 @@ class Browser:
             - soup: HTML soup
             - selector: selector string
             
-        And should return a true value if the soup contains a selector. If
-        your soup can be directly called with a selector: soup("my_selector")
-        you can leave this argument to None.
+        This callback hould return a true value if the soup does contain
+        the selector. If your soup object can be directly called with a 
+        selector as unique argument (as PyQuery does, for exampel), you
+        don't need to set it.
         """
         self._html_parser = parser
         self._soup_selector = soup_selector
@@ -561,19 +576,46 @@ class Browser:
         Return True if current HTML soup contains a given selector.
         
         If soup_selector is set this method will use it. Otherwise it will call 
-        directly the soup object with the selector.
+        directly the soup object with the given selector.
         """
         if self._soup_selector is None:
             return self.soup(selector)
         return self._soup_selector(self.soup, selector)
+
+    #}
+             
+    #{ Miscellaneous
+    def get_url_from_path(self, path):
+        """Return the URL for a given path using current URL as base url."""
+        return urlparse.urljoin(self.url, path)
+
+    def set_url_filter(self, url_filter):
+        """
+        Set function to filter URL.
+        
+        By default all elements of pages are loaded. That includes stylesheets,
+        images and many other elements that the user may not need at all. To
+        lighten network bandwidth, we can define a callback that will be called
+        every time a new request is created. 
+        
+        The callback must have this signature: my_url_filter(operation, url) 
+                        
+            - operation: string with HTTP operation: "get", "head", "post" or "put"
+            - url: requested URL
+            
+        The callback should return True (accepted) or False (filtered).
+        """
+        self._url_filter = url_filter
+    
+    #}
              
     # Properties
                  
     soup = property(_get_soup)
-    """HTML soup (html_parser must be set)."""
+    """HTML soup (see L{set_html_parser})."""
     
     html = property(_get_html)
     """Rendered HTML in current page."""
     
     url = property(_get_url)
-    """Current URL."""    
+    """Current URL."""
