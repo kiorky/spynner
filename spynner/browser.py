@@ -14,6 +14,21 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this software.  If not, see <http://www.gnu.org/licenses/>
+"""
+Spynner is a stateful programmatic web browser module for Python 
+with Javascript/AJAX support based upon the QtWebKit framework.
+
+Basic example:
+    
+>>> browser = spynner.Browser()
+>>> browser.load("http://www.wordreference.com")
+>>> browser.select("#esen")
+>>> browser.fill("input[name=enit]", "hola")
+>>> browser.click("input[name=b]", wait_page_load=True)
+>>> browser.runjs("console.log('I can run Javascript!')")
+>>> print browser.html
+>>> browser.close()
+"""
 
 import itertools
 import cookielib
@@ -138,8 +153,18 @@ class Browser:
         os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
     
-    def __init__(self, qappargs=None, debug_level=None, html_parser=None,
-            url_filter=None):
+    def __init__(self, qappargs=None, debug_level=None, url_filter=None,
+            html_parser=None, soup_selector=None):
+        """
+        
+        Init a browser object.
+        
+        @param qappargs: Arguments for QApplication
+        @param debug_level: spynner.[ERROR|WARNING|INFO|DEBUG] (ERROR by default)
+        @param url_filter: Callback to filter URL. See set_url_filter.
+        @param html_parser: Callback to create HTML soup. See set_html_parser.
+        @param soup_selector: How to get selectors in soup. See set_html_parser.
+        """        
         self.app = QApplication(qappargs or [])
         if debug_level is not None:
             self.debug_level = debug_level
@@ -150,6 +175,7 @@ class Browser:
         # Callbacks
         self._url_filter = url_filter
         self._html_parser = html_parser
+        self._soup_selector = soup_selector
             
         # Javascript
         directory = first(self.javascript_directories, os.path.isdir)
@@ -439,7 +465,7 @@ class Browser:
             time.sleep(self.event_looptime)
     
     def fill(self, selector, value):
-        """Fill an input text with a strin value using a jQuery selector."""
+        """Fill an input text with a string value using a jQuery selector."""
         jscode = "jQuery('%s').val('%s')" % (selector, value)
         self._runjs_on_jquery("fill", jscode)
 
@@ -462,7 +488,7 @@ class Browser:
         self._runjs_on_jquery("check", jscode)
 
     def uncheck(self, selector):
-        """Check input checkbox using a jQuery selector"""
+        """Uncheck input checkbox using a jQuery selector"""
         jscode = "jQuery('%s').attr('checked', false)" % selector
         self._runjs_on_jquery("uncheck", jscode)
 
@@ -472,7 +498,7 @@ class Browser:
         self._runjs_on_jquery("choose", jscode)
 
     def select(self, selector):        
-        """Choose a radio input using a jQuery selector."""
+        """Choose a option in a select using a jQuery selector."""
         jscode = "jQuery('%s').attr('selected', 'selected')" % selector
         self._runjs_on_jquery("select", jscode)
         
@@ -504,18 +530,42 @@ class Browser:
         """Return the URL for a given path using current URL as base url."""
         return urlparse.urljoin(self.url, path)
     
-    def set_html_parser(self, parser):
+    def set_html_parser(self, parser, soup_selector=None):
         """
-        Set HTML parser.
+        Set HTML parser used by the soup property.
         
         When a HTML parser is set for a Browser, the property soup returns
-        the current HTML soup (the result of parsing the HTML).        
+        the current HTML soup (the result of parsing the HTML).
+        
+        Set soup_selector if you are planning to use soup_has_selector method.
+        This argument must be a callback with signature:
+            
+        soup_selector(soup, selector)
+        
+            - soup: HTML soup
+            - selector: selector string
+            
+        And should return a true value if the soup contains a selector. If
+        your soup can be directly called with a selector: soup("my_selector")
+        you can leave this argument to None.
         """
         self._html_parser = parser
+        self._soup_selector = soup_selector
 
     def html_contains(self, regexp):
         """Return True if current HTML contains a regular expression."""
         return bool(re.search(regexp, self.html))
+
+    def soup_has_selector(self, selector):
+        """
+        Return True if current HTML soup contains a given selector.
+        
+        If soup_selector is set this method will use it. Otherwise it will call 
+        directly the soup object with the selector.
+        """
+        if self._soup_selector is None:
+            return self.soup(selector)
+        return self._soup_selector(self.soup, selector)
              
     # Properties
                  

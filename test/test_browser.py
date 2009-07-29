@@ -203,8 +203,20 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.assertEqual(self.browser.html.splitlines(), self.browser.soup)
         
     def test_html_contains(self):
-        self.browser.html_contains("function SetCookie")
-        self.browser.html_contains("func.ion [Ss]etCookie")
+        self.assertTrue(self.browser.html_contains("function SetCookie"))
+        self.assertTrue(self.browser.html_contains("func.ion [Ss]etCookie"))
+        self.assertFalse(self.browser.html_contains("strange string"))
+
+    def test_soup_has_selector(self):
+        def my_parser(html):
+            return html.splitlines()
+        def my_selector_callback(soup, selector):
+            return any(selector in line.strip() for line in soup)
+        self.browser.set_html_parser(my_parser, my_selector_callback)
+        self.assertTrue(self.browser.soup_has_selector("<head>"))
+        self.assertTrue((self.browser.soup_has_selector(
+            '<a id="link" href="/test3.html">link</a>')))
+        self.assertFalse(self.browser.soup_has_selector('strange'))
                     
 def suite():
     return unittest.TestLoader().loadTestsFromTestCase(SpynnerBrowserTest)
