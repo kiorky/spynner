@@ -17,22 +17,38 @@
 import os
 import re
 import cgi
+import base64
 
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
-class MyHandler(BaseHTTPRequestHandler):
+class Handler(BaseHTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
         self.basedir = kwargs.pop("basedir")    
         self.verbose = kwargs.pop("verbose")
+        self.protected = kwargs.pop("protected")
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
         
-    def do_GET(self):        
+    def _debug_headers(self, headers):
+        if self.verbose:
+            for header in headers.headers:
+                print header,
+            
+    def do_GET(self):
+        self._debug_headers(self.headers)        
         path = re.sub("\?.*$", "", self.path.strip("/"))
         filepath = os.path.join(self.basedir, path)
         if not os.path.isfile(filepath):
             self.send_error(404, 'File Not Found: %s' % path)
             return
+        if self.protected and self.path in self.protected:
+            correct = base64.b64encode('myuser:mypassword')
+            authorization = self.headers.getheader('authorization')
+            if not authorization or not authorization.split()[1] == correct:
+                self.send_response(401)
+                self.send_header('WWW-Authenticate', 'Basic realm="webserver"')
+                self.end_headers()
+                return
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
@@ -49,17 +65,17 @@ class MyHandler(BaseHTTPRequestHandler):
         if self.verbose:
             BaseHTTPRequestHandler.log_message(self, *args)
         
-def get_handler_factory(basedir, verbose):
+def get_handler_factory(basedir, verbose, protected):
     def factory(*args):
-        return MyHandler(*args, basedir=basedir, verbose=verbose)
+        return Handler(*args, basedir=basedir, verbose=verbose, protected=protected)
     return factory
         
-def get_server(host, port, basedir, verbose=False):
-    return HTTPServer((host, port), get_handler_factory(basedir, verbose))
+def get_server(host, port, basedir, verbose=False, protected=None):
+    return HTTPServer((host, port), get_handler_factory(basedir, verbose, protected))
 
 def main():
     basedir = os.path.join(os.path.dirname(__file__), "fixtures")
-    server = get_server('', 8081, basedir)
+    server = get_server('', 8081, basedir, True, ("/protected.html",))
     print 'started HTTP server'
     server.serve_forever()
 
