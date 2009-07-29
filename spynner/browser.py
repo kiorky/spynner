@@ -516,11 +516,9 @@ class Browser:
     def html_contains(self, regexp):
         """Return True if current HTML contains a regular expression."""
         return bool(re.search(regexp, self.html))
-
-    def html_not_contains(self, regexp):
-        """Return True if current HTML contains a regular expression."""
-        return not self.html_contains(regexp)
              
+    # Properties
+                 
     soup = property(_get_soup)
     """HTML soup (html_parser must be set)."""
     
