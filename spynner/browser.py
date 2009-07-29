@@ -206,8 +206,12 @@ class Browser:
         self.manager.connect(self.manager, 
             SIGNAL('finished(QNetworkReply *)'),
             self._on_reply)
+        self.manager.connect(self.manager,
+            SIGNAL('authenticationRequired(QNetworkReply *, QAuthenticator *)'),
+            self._on_authentication_required)   
         
-       # Webpage slots
+        # Webpage slots
+         
         self.webpage.setForwardUnsupportedContent(True)
         self.webpage.connect(self.webpage,
             SIGNAL('unsupportedContent(QNetworkReply *)'), 
@@ -227,6 +231,22 @@ class Browser:
             self._debug(WARNING, "SSL certificate error ignored: %s" % url)
             reply.ignoreSslErrors()
 
+    def _on_authentication_required(self, reply, authenticator):
+        url = unicode(reply.url().toString())
+        realm = unicode(authenticator.realm())
+        self._debug("HTTP auth required: for %s (realm: %s)" % (url, realm))
+        if not self._http_authentication_callback:
+            self._debug(WARNING, "HTTP auth required, but no callback defined")
+            return        
+        auth = self._http_authentication_callback(url, realm)        
+        if auth:            
+            user, password = auth
+            self._debug(INFO, "HTTP Authentication callback: %s/*****" % user)
+            authenticator.setUser(user)
+            authenticator.setPassword(password)
+        else:
+            self._debug(INFO, "HTTP Authentication callback didn't answer")
+        
     def _manager_create_request(self, operation, request, data):
         url = unicode(request.url().toString())
         operation_name = self.operation_names[operation].upper()
@@ -358,7 +378,7 @@ class Browser:
         self.webframe.load(QUrl(url))
         return self._wait_page_load()
 
-    def click(self, selector, wait_page_load=False):
+    def click(self, selector, wait_page_load=False, wait_page_load_timeout=None):
         """
         Click link or button using a jQuery selector.
         
@@ -372,7 +392,7 @@ class Browser:
         jscode = "jQuery('%s').simulate('click')" % selector
         self._runjs_on_jquery("click", jscode)
         if wait_page_load:
-            return self._wait_page_load()         
+            return self._wait_page_load(wait_page_load_timeout)
 
     def wait_page_load(self, timeout=None):
         """Wait until a new page is loaded.
@@ -442,7 +462,7 @@ class Browser:
 
     #}
                         
-    #{ Form manipulation and submit
+    #{ Form manipulation
     
     def fill(self, selector, value):
         """Fill an input text with a string value using a jQuery selector."""
@@ -474,7 +494,13 @@ class Browser:
     #{ Javascript 
     
     def runjs(self, jscode, debug=True):
-        """Run arbitrary Javascript code into the current frame."""
+        """Run arbitrary Javascript code into the current frame.
+        
+        Javascript code is injected in the page context. 
+        
+        When you want to call jquery use always C{jQuery(...)}, instead of
+        the C{$(...)} shortcut.        
+        """
         if debug:
             self._debug(DEBUG, "Run Javascript code: %s" % jscode)
         return self.webpage.mainFrame().evaluateJavaScript(jscode)
@@ -489,8 +515,8 @@ class Browser:
         
         Calback signature: C{javascript_confirm_callback(url, message)}
         
-        @param url: Url where the popup was launched.        
-        @param message: String message.
+            - url: Url where the popup was launched.        
+            - param message: String message.
         
         The callback should return a boolean (True means 'yes', False means 'no')
         """
@@ -506,9 +532,9 @@ class Browser:
         
         Callback signature: C{javascript_prompt_callback(url, message, defaultvalue)}
         
-        @param url: Url where the popup prompt was launched.
-        @param message: String message.
-        @param defaultvalue: Default value for prompt answer
+            - url: Url where the popup prompt was launched.
+            - message: String message.
+            - defaultvalue: Default value for prompt answer
             
         Callback should return string or None to cancel prompt.
         """
@@ -606,7 +632,24 @@ class Browser:
         The callback should return True (accepted) or False (filtered).
         """
         self._url_filter = url_filter
-    
+
+    def set_http_authentication_callback(self, callback):
+        """
+        Set HTTP authentication request callback.
+        
+        Set the callback that will called when a page asks for HTTP
+        authentication. The callback must have this signature: 
+        
+        C{http_authentication_callback(url, realm)} 
+                        
+            - url: URL where the requested was made
+            - realm: Realm requiring authentication
+            
+        The callback should return a pair of string containing (user, password) 
+        or a false value to leave it unanswered.
+        """
+        self._http_authentication_callback = callback
+
     #}
              
     # Properties

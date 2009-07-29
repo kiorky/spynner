@@ -35,7 +35,8 @@ def get_file_path(*path):
     return os.path.join(TESTDIR, "fixtures", *path)
 
 def start_threaded_server(port):
-    server = webserver.get_server('', port, get_file_path())
+    protected = ("/protected.html",)
+    server = webserver.get_server('', port, get_file_path(), False, protected)
     thread = threading.Thread(target=server.serve_forever)
     thread.start()
     return server, thread
@@ -44,9 +45,9 @@ class SpynnerBrowserTest(unittest.TestCase):
     def setUp(self):
         self.debugoutput = StringIO()
         self.browser = spynner.Browser(debug_level=spynner.DEBUG)
-        #self.browser.create_webview(); self.browser.show()
         self.browser.debug_stream = self.debugoutput
         self.browser.load(get_url("/test1.html"))
+        #self.browser.create_webview(); self.browser.show(); self.browser.browse()
 
     def tearDown(self):
         self.browser.close()
@@ -57,7 +58,7 @@ class SpynnerBrowserTest(unittest.TestCase):
         
     # Tests
     
-    def test_init_with_webview(self):
+    def test_browser_webview(self):
         self.browser.create_webview()
         html = self.browser.load(get_url("/test1.html"))
         self.browser.webview.show = lambda *args: None
@@ -86,7 +87,7 @@ class SpynnerBrowserTest(unittest.TestCase):
         
     def test_click(self):
         self.browser.click("#link")
-        self.browser.wait_page_load()
+        self.browser.wait_page_load(timeout=1.0)
         self.assertEqual(get_url('/test3.html'), self.browser.url)            
 
     def test_check(self):
@@ -112,7 +113,7 @@ class SpynnerBrowserTest(unittest.TestCase):
     def test_fill(self):
         self.browser.fill("input[name=user]", "myname")
         self.browser.click("#submit")
-        self.browser.wait_page_load()
+        self.browser.wait_page_load(timeout=1.0)
         self.assertEqual(get_url('/test2.html?user=myname'), 
             self.browser.url)            
                 
@@ -177,7 +178,7 @@ class SpynnerBrowserTest(unittest.TestCase):
             return True
         self.browser.set_javascript_confirm_callback(confirm_yes)                
         self.browser.click("#link_confirmed")
-        self.browser.wait_page_load()
+        self.browser.wait_page_load(timeout=1.0)
         self.assertEqual(get_url("/test3.html"), self.browser.url)
 
     def test_javascript_prompt(self):
@@ -218,6 +219,23 @@ class SpynnerBrowserTest(unittest.TestCase):
             '<a id="link" href="/test3.html">link</a>')))
         self.assertFalse(self.browser.soup_has_selector('strange'))
                     
+
+    def test_http_authentication(self):
+        def not_auth_callback(url, realm):
+            return False
+        self.browser.set_http_authentication_callback(not_auth_callback)
+        self.browser.click("#link_protected")
+        self.browser.wait_page_load(timeout=1.0)
+        self.assertNotEqual(get_url("/protected.html"), self.browser.url)
+        
+        def auth_callback(url, realm):
+            return ("myuser", "mypassword")
+        self.browser.set_http_authentication_callback(auth_callback)
+        self.browser.click("#link_protected")
+        self.browser.wait_page_load(timeout=1.0)
+        self.assertEqual(get_url("/protected.html"), self.browser.url)
+        
+                                    
 def suite():
     return unittest.TestLoader().loadTestsFromTestCase(SpynnerBrowserTest)
 
