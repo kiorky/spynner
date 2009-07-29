@@ -35,7 +35,8 @@ class Handler(BaseHTTPRequestHandler):
                 print header,
             
     def do_GET(self):
-        self._debug_headers(self.headers)        
+        request_headers = self.headers.headers[:]
+        self._debug_headers(request_headers)        
         path = re.sub("\?.*$", "", self.path.strip("/"))
         filepath = os.path.join(self.basedir, path)
         if not os.path.isfile(filepath):
@@ -52,7 +53,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write(open(filepath).read())
+        sheaders = "<br />".join(request_headers)
+        html = open(filepath).read().replace("$headers", sheaders)         
+        self.wfile.write(html)
      
     def do_POST(self):
         ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))

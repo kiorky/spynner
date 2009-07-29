@@ -141,8 +141,8 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.assertTrue("hello there!" in output)        
 
     def test_download(self):
-        data = self.browser.download(get_url('/test2.html'))
-        self.assertEqual(open(get_file_path('test2.html')).read(), data)
+        data = self.browser.download(get_url('/test3.html'))
+        self.assertEqual(open(get_file_path('test3.html')).read(), data)
 
     def test_download_only_http(self):
         self.assertRaises(spynner.SpynnerError,
@@ -150,8 +150,8 @@ class SpynnerBrowserTest(unittest.TestCase):
 
     def test_stream_download(self):
         outfd = StringIO()
-        self.browser.download(get_url('/test2.html'), outfd=outfd)
-        expected_data = open(get_file_path('test2.html')).read()
+        self.browser.download(get_url('/test3.html'), outfd=outfd)
+        expected_data = open(get_file_path('test3.html')).read()
         self.assertEqual(expected_data, outfd.getvalue())
 
     def test_get_url_from_path(self):
@@ -234,7 +234,11 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.browser.click("#link_protected")
         self.browser.wait_page_load(timeout=1.0)
         self.assertEqual(get_url("/protected.html"), self.browser.url)
-        
+
+    def test_user_agent(self):
+        self.browser.user_agent = "My user agent"
+        self.browser.load(get_url("/test2.html"))
+        self.assertTrue("User-Agent: My user agent" in self.browser.html)
                                     
 def suite():
     return unittest.TestLoader().loadTestsFromTestCase(SpynnerBrowserTest)

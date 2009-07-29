@@ -26,7 +26,7 @@ Basic example:
 >>> browser.fill("input[name=enit]", "hola")
 >>> browser.click("input[name=b]", wait_page_load=True)
 >>> browser.runjs("console.log('I can run Javascript!')")
->>> print browser.html
+>>> print browser.url, len(browser.html)
 >>> browser.close()
 """
 
@@ -49,7 +49,7 @@ from PyQt4.QtWebKit import QWebPage, QWebView
 ERROR, WARNING, INFO, DEBUG = range(4)
 
 def first(iterable, pred=bool):
-    """Return first element in iterator that matches the predicate"""
+    """Return the first element in iterator that matches the predicate"""
     for item in iterable:
         if pred(item):
             return item
@@ -112,7 +112,7 @@ class NetworkCookieJar(QNetworkCookieJar):
         
         .firefox.com     TRUE   /  FALSE  946684799   MOZILLA_ID  100103        
         """
-        header = ["# Netscape HTTP Cookie File"]        
+        header = ["# Netscape HTTP Cookie File", ""]        
         def bool2str(value):
             return {True: "TRUE", False: "FALSE"}[value]
         def byte2str(value):            
@@ -135,11 +135,12 @@ class NetworkCookieJar(QNetworkCookieJar):
 class Browser:  
     ignore_ssl_errors = True
     """@ivar: If True, ignore SSL certificate errors."""
+    user_agent = None
+    """@ivar: User agent for requests (see QWebPage::userAgentForUrl for details)"""    
     debug_stream = sys.stderr
     """@ivar: Stream where debug output will be written."""
     debug_level = ERROR
-    """@ivar: Debug verbose level."""
-    
+    """@ivar: Debug verbose level."""    
     event_looptime = 0.01
     """@ivar: Event loop dispatcher loop delay."""
     
@@ -162,7 +163,7 @@ class Browser:
         @param debug_level: Debug level logging (ERROR by default)
         @param url_filter: Callback to filter URLs. See L{set_url_filter}.
         @param html_parser: Callback to build HTML soup. See L{set_html_parser}.
-        @param soup_selector: How to get selectors in soup. See L{set_html_parser}.        
+        @param soup_selector: Callback to get selectors in soup. See L{set_html_parser}.        
         """        
         self.app = QApplication(qappargs or [])
         if debug_level is not None:
@@ -170,6 +171,8 @@ class Browser:
         self.webpage = QWebPage()
         self.webframe = self.webpage.mainFrame()
         self.webview = None
+        
+        self.webpage.userAgentForUrl = self._user_agent_for_url
         
         # Callbacks
         self._url_filter = url_filter
@@ -225,6 +228,11 @@ class Browser:
             kwargs = dict(outfd=self.debug_stream)
             debug(*args, **kwargs)
 
+    def _user_agent_for_url(self, url):
+        if self.user_agent:
+            return self.user_agent
+        return QWebPage.userAgentForUrl(self.webpage, url)
+    
     def _on_manager_ssl_errors(self, reply, errors):
         if self.ignore_ssl_errors:
             url = unicode(reply.url().toString())
@@ -238,14 +246,14 @@ class Browser:
         if not self._http_authentication_callback:
             self._debug(WARNING, "HTTP auth required, but no callback defined")
             return        
-        auth = self._http_authentication_callback(url, realm)        
-        if auth:            
-            user, password = auth
+        credentials = self._http_authentication_callback(url, realm)        
+        if credentials:            
+            user, password = credentials
             self._debug(INFO, "HTTP Authentication callback: %s/*****" % user)
             authenticator.setUser(user)
             authenticator.setPassword(password)
         else:
-            self._debug(INFO, "HTTP Authentication callback didn't answer")
+            self._debug(WARNING, "HTTP Authentication callback returned no answer")
         
     def _manager_create_request(self, operation, request, data):
         url = unicode(request.url().toString())
@@ -368,9 +376,18 @@ class Browser:
 
     def _get_url(self):
         return unicode(self.webframe.url().toString())
-        
-    # Public interface
+
+    # Properties
+                 
+    soup = property(_get_soup)
+    """HTML soup (see L{set_html_parser})."""
     
+    html = property(_get_html)
+    """Rendered HTML in current page."""
+    
+    url = property(_get_url)
+    """Current URL."""        
+       
     #{ Basic interaction with browser
 
     def load(self, url):
@@ -422,7 +439,7 @@ class Browser:
 
     #}
                       
-    #{ Webview 
+    #{ Webview
     
     def create_webview(self):
         """Create a QWebView object and insert current QWebPage."""
@@ -550,7 +567,7 @@ class Browser:
 
     #}
     
-    #{ Download
+    #{ Download files
                 
     def download(self, url, outfd=None, bufsize=4096*16, cookies=None):
         """Download given URL using current cookies.
@@ -568,7 +585,7 @@ class Browser:
     
     #}
         
-    #{ HTML and soup parsing
+    #{ HTML and tag soup parsing
     
     def set_html_parser(self, parser, soup_selector=None):
         """
@@ -609,30 +626,9 @@ class Browser:
         return self._soup_selector(self.soup, selector)
 
     #}
-             
-    #{ Miscellaneous
-    def get_url_from_path(self, path):
-        """Return the URL for a given path using current URL as base url."""
-        return urlparse.urljoin(self.url, path)
 
-    def set_url_filter(self, url_filter):
-        """
-        Set function to filter URL.
-        
-        By default all elements of pages are loaded. That includes stylesheets,
-        images and many other elements that the user may not need at all. To
-        lighten network bandwidth, we can define a callback that will be called
-        every time a new request is created. 
-        
-        The callback must have this signature: my_url_filter(operation, url) 
-                        
-            - operation: string with HTTP operation: "get", "head", "post" or "put"
-            - url: requested URL
-            
-        The callback should return True (accepted) or False (filtered).
-        """
-        self._url_filter = url_filter
-
+    #{ HTTP Authentication
+     
     def set_http_authentication_callback(self, callback):
         """
         Set HTTP authentication request callback.
@@ -642,23 +638,40 @@ class Browser:
         
         C{http_authentication_callback(url, realm)} 
                         
-            - url: URL where the requested was made
-            - realm: Realm requiring authentication
+            - C{url}: URL where the requested was made
+            - C{realm}: Realm requiring authentication
             
         The callback should return a pair of string containing (user, password) 
         or a false value to leave it unanswered.
         """
         self._http_authentication_callback = callback
-
+    
     #}
              
-    # Properties
-                 
-    soup = property(_get_soup)
-    """HTML soup (see L{set_html_parser})."""
+    #{ Miscellaneous
     
-    html = property(_get_html)
-    """Rendered HTML in current page."""
-    
-    url = property(_get_url)
-    """Current URL."""
+    def get_url_from_path(self, path):
+        """Return the URL for a given path using current URL as base url."""
+        return urlparse.urljoin(self.url, path)
+
+    def set_url_filter(self, url_filter):
+        """
+        Set function callback to filter URL.
+        
+        By default all requested elements of a page are loaded. That includes 
+        stylesheets, images and many other things that user may not need at all. 
+        
+        Use this method to define the callback that will be called every time 
+        a new request is made and which decides if it's loaded or not. The 
+        callback must have this signature: 
+        
+        C{my_url_filter(operation, url)}: 
+                        
+            - C{operation}: string with HTTP operation: get, head, post or put.
+            - C{url}: requested URL
+            
+        It should return C{True} (proceed) or C{False} (reject).
+        """
+        self._url_filter = url_filter
+
+    #}
