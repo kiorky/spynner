@@ -505,8 +505,22 @@ class Browser:
         return urlparse.urljoin(self.url, path)
     
     def set_html_parser(self, parser):
-        self._html_parser = parser
+        """
+        Set HTML parser.
         
+        When a HTML parser is set for a Browser, the property soup returns
+        the current HTML soup (the result of parsing the HTML).        
+        """
+        self._html_parser = parser
+
+    def html_contains(self, regexp):
+        """Return True if current HTML contains a regular expression."""
+        return bool(re.search(regexp, self.html))
+
+    def html_not_contains(self, regexp):
+        """Return True if current HTML contains a regular expression."""
+        return not self.html_contains(regexp)
+             
     soup = property(_get_soup)
     """HTML soup (html_parser must be set)."""
     
