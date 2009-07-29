@@ -195,6 +195,12 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.browser.click("#link_prompt")
         self.assertTrue("User answer" not in self.get_debug())            
         
+
+    def test_html_parser(self):
+        def my_parser(html):
+            return html.splitlines()
+        self.browser.set_html_parser(my_parser)
+        self.assertEqual(self.browser.html.splitlines(), self.browser.soup)
                     
 def suite():
     return unittest.TestLoader().loadTestsFromTestCase(SpynnerBrowserTest)

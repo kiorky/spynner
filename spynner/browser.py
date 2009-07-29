@@ -21,8 +21,8 @@ import tempfile
 import urlparse
 import urllib2
 import time
-import re
 import sys
+import re
 import os
 
 from PyQt4.QtCore import SIGNAL, QUrl, QEventLoop, QString, Qt
@@ -30,12 +30,8 @@ from PyQt4.QtGui import QApplication
 from PyQt4.QtNetwork import QNetworkCookieJar, QNetworkAccessManager, QNetworkReply
 from PyQt4.QtWebKit import QWebPage, QWebView
 
-# Debug level
+# Debug levels
 ERROR, WARNING, INFO, DEBUG = range(4)
-
-JSCODE_EXTRA = """
-    jQuery.noConflict();
-"""
 
 def first(iterable, pred=bool):
     """Return first element in iterator that matches the predicate"""
@@ -142,15 +138,18 @@ class Browser:
         os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
     
-    def __init__(self, qappargs=None, debug_level=None):
+    def __init__(self, qappargs=None, debug_level=None, html_parser=None,
+            url_filter=None):
         self.app = QApplication(qappargs or [])
         if debug_level is not None:
             self.debug_level = debug_level
         self.webpage = QWebPage()
         self.webframe = self.webpage.mainFrame()
         self.webview = None
-        self.reply = None
-        self._url_filter = None
+        
+        # Callbacks
+        self._url_filter = url_filter
+        self._html_parser = html_parser
             
         # Javascript
         directory = first(self.javascript_directories, os.path.isdir)
@@ -163,24 +162,27 @@ class Browser:
         self.webpage.javaScriptAlert = self._javascript_alert                
         self.webpage.javaScriptConsoleMessage = self._javascript_console_message
         self.webpage.javaScriptConfirm = self._javascript_confirm
-        self._javascript_confirm_callback = None
         self.webpage.javaScriptPrompt = self._javascript_prompt
+        self._javascript_confirm_callback = None
         self._javascript_confirm_prompt = None
         
-        # Manager and cookies
+        # Network Access Manager and cookies
+        self.operation_names = dict(
+            (getattr(QNetworkAccessManager, s + "Operation"), s.lower()) 
+            for s in ("Get", "Head", "Post", "Put"))
         self.manager = QNetworkAccessManager()
         self.manager.createRequest = self._manager_create_request 
         self.webpage.setNetworkAccessManager(self.manager)            
         self.cookiesjar = NetworkCookieJar()
         self.manager.setCookieJar(self.cookiesjar)
-        self.operation_names = dict(
-            (getattr(QNetworkAccessManager, s + "Operation"), s.lower()) 
-            for s in ("Get", "Head", "Post", "Put"))
         self.manager.connect(self.manager, 
             SIGNAL("sslErrors (QNetworkReply *, const QList<QSslError> &)"),
             self._on_manager_ssl_errors)
+        self.manager.connect(self.manager, 
+            SIGNAL('finished(QNetworkReply *)'),
+            self._on_reply)
         
-       # Webpage signals
+       # Webpage slots
         self.webpage.setForwardUnsupportedContent(True)
         self.webpage.connect(self.webpage,
             SIGNAL('unsupportedContent(QNetworkReply *)'), 
@@ -188,9 +190,6 @@ class Browser:
         self.webpage.connect(self.webpage, 
             SIGNAL('loadFinished(bool)'),
             self._on_load_status)
-        self.manager.connect(self.manager, 
-            SIGNAL('finished(QNetworkReply *)'),
-            self._on_reply)
 
     def _debug(self, level, *args):
         if level <= self.debug_level:
@@ -209,11 +208,11 @@ class Browser:
         self._debug(INFO, "Request: %s %s" % (operation_name, url))
         for h in request.rawHeaderList():
             self._debug(DEBUG, "  %s: %s" % (h, request.rawHeader(h)))
-        reply = QNetworkAccessManager.createRequest(self.manager, operation, 
-            request, data)        
+        reply = QNetworkAccessManager.createRequest(self.manager, 
+            operation, request, data)        
         if self._url_filter:
             if not self._url_filter(self.operation_names[operation], url):
-                self._debug(INFO, "URL filtered by user callback: %s" % url)
+                self._debug(INFO, "URL filtered by: %s" % url)
                 reply.abort()
         return reply
 
@@ -227,7 +226,6 @@ class Browser:
             self.download(url, outfd=open(path, "wb"))            
 
     def _on_reply(self, reply):
-        self.reply = reply 
         url = unicode(reply.url().toString())
         if reply.error():
             self._debug(WARNING, "Reply error: %s - %d (%s)" % 
@@ -296,7 +294,7 @@ class Browser:
             time.sleep(self.event_looptime)
             self.app.processEvents(QEventLoop.AllEvents)
         if self._load_status:
-            self.runjs(self.javascript + JSCODE_EXTRA, debug=False)
+            self.runjs(self.javascript + "jQuery.noConflict();", debug=False)
         return self._load_status
 
     def _runjs_on_jquery(self, name, code):
@@ -318,6 +316,11 @@ class Browser:
 
     def _get_html(self):
         return unicode(self.webframe.toHtml())
+
+    def _get_soup(self):
+        if not self._html_parser:
+            raise SpynnerError("Cannot get soup without a HTML parser")
+        return self._html_parser(self.html)
 
     def _get_url(self):
         return unicode(self.webframe.url().toString())
@@ -500,6 +503,12 @@ class Browser:
     def get_url_from_path(self, path):
         """Return the URL for a given path using current URL as base url."""
         return urlparse.urljoin(self.url, path)
+    
+    def set_html_parser(self, parser):
+        self._html_parser = parser
+        
+    soup = property(_get_soup)
+    """HTML soup (html_parser must be set)."""
     
     html = property(_get_html)
     """Rendered HTML in current page."""
