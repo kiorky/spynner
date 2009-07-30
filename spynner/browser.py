@@ -39,8 +39,8 @@ import sys
 import re
 import os
 
-from PyQt4.QtCore import SIGNAL, QUrl, QEventLoop, QString, Qt, QCoreApplication
-from PyQt4.QtGui import QApplication
+from PyQt4.QtCore import SIGNAL, QUrl, QEventLoop, QString, Qt, QCoreApplication, QSize
+from PyQt4.QtGui import QApplication, QImage, QPainter, QRegion
 from PyQt4.QtNetwork import QNetworkCookieJar, QNetworkAccessManager, QNetworkReply
 from PyQt4.QtWebKit import QWebPage, QWebView
 
@@ -353,6 +353,7 @@ class Browser:
         if self._load_status:
             jscode = "var %s = jQuery.noConflict();" % self.jslib
             self.runjs(self.javascript + jscode, debug=False)
+            self.webpage.setViewportSize(self.webpage.mainFrame().contentsSize())            
         return self._load_status
 
     def _runjs_on_jquery(self, name, code):
@@ -660,6 +661,23 @@ class Browser:
              
     #{ Miscellaneous
     
+    def snapshot(self, box, format=QImage.Format_ARGB32):
+        """        
+        Take an snapshot of current frame.
+        
+        @param box: tuple containing box to capture (x1, y1, x2, y2).
+        @param format: QImage format (see QImage::Format_*).
+        @return: QImage image (see QImage for details).
+        """
+        x1, y1, x2, y2 = box        
+        w, h = (x2 - x1), (y2 - y1)
+        image = QImage(QSize(x2, y2), format)
+        painter = QPainter(image)
+        self.webpage.mainFrame().render(painter)
+        #self.webpage.mainFrame().render(painter, QRegion(x1, y1, w, h))        
+        painter.end()
+        return image.copy(x1, y1, w, h)
+            
     def get_url_from_path(self, path):
         """Return the URL for a given path using the current URL as base."""
         return urlparse.urljoin(self.url, path)

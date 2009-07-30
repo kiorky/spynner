@@ -24,6 +24,7 @@ from StringIO import StringIO
 
 import spynner
 import webserver
+from PyQt4.QtGui import QImage
              
 TESTDIR = os.path.dirname(__file__)
 TESTING_SERVER_PORT = 9876 
@@ -239,8 +240,13 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.browser.user_agent = "My user agent"
         self.browser.load(get_url("/test2.html"))
         self.assertTrue("User-Agent: My user agent" in self.browser.html)
-                                    
+
+    def test_snapshot(self):
+        image = self.browser.snapshot((100, 100, 200, 250))
+        self.assertTrue(type(image) == QImage)
+        self.assertEqual((image.width(), image.height()), (100, 150))
 def suite():
+                                            
     return unittest.TestLoader().loadTestsFromTestCase(SpynnerBrowserTest)
 
 if __name__ == '__main__':
