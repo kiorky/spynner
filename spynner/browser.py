@@ -24,7 +24,7 @@ Javascript/AJAX support based upon the QtWebKit framework.
 >>> browser.fill("input[name=enit]", "hola")
 >>> browser.click("input[name=b]", wait_page_load=True)
 >>> browser.runjs("console.log('I can run Javascript!')")
->>> browser.runjs("_jQuery('div').css('border', 'solid red')")
+>>> browser.runjs("_jQuery('div').css('border', 'solid red')") # and jQuery!
 >>> print browser.url, len(browser.html)
 >>> browser.close()
 """
@@ -105,8 +105,7 @@ class SpynnerJavascriptError(Exception):
 class _ExtendedNetworkCookieJar(QNetworkCookieJar):
     def mozillaCookies(self):
         """
-        Return string containing all cookies in cookie jar in
-        text Mozilla cookies format:
+        Return all cookies in mozilla text format:
         
         # domain domain_flag path secure_connection expiration name value
         
@@ -386,19 +385,19 @@ class Browser(object):
 
     # Properties
                  
-    soup = property(_get_soup)
-    """HTML soup (see L{set_html_parser})."""
-    
     html = property(_get_html)
     """Rendered HTML in current page."""
-    
+                 
+    soup = property(_get_soup)
+    """HTML soup (see L{set_html_parser})."""
+        
     url = property(_get_url)
     """Current URL."""        
        
     #{ Basic interaction with browser
 
     def load(self, url):
-        """Load a web page and return status boolean."""
+        """Load a web page and return status (boolean)."""
         self.webframe.load(QUrl(url))
         return self._wait_page_load()
 
@@ -411,9 +410,9 @@ class Browser(object):
         @param wait_page_load_timeout: Seconds to wait for page before raising an exception.
                       
         @attention: By default this method will not wait for a page to load. 
-        If you are clicking a link or submit button you must call this
-        method with wait_page_load enabled or alternatively call 
-        Browser#wait_page_load afterwards.
+        If you are clicking a link or submit button, you must call this
+        method with C{wait_page_load=True} or alternatively call 
+        L{wait_page_load} afterwards.
         """
         jscode = "%s('%s').simulate('click')" % (self.jslib, selector)
         self._runjs_on_jquery("click", jscode)
@@ -423,16 +422,21 @@ class Browser(object):
     def wait_page_load(self, timeout=None):
         """Wait until a new page is loaded.
         
+        @param timeout: Time to wait (seconds) for load to complete before 
+                        raising an exception
         @return: Boolean state
         @raise SpynerTimeout: When timeout is reached.
         """
         return self._wait_page_load(timeout)
 
     def wait(self, waitime):
-        """Wait some time.
+        """
+        Wait some time.
+        
+        @param waitime: Time to wait (seconds).
         
         This is an active wait, the event and events loop will be run.
-        This function is useful to wait for syncronous Javascript events.
+        This function is useful to wait for synchronous Javascript events.
         """   
         itime = time.time()
         while time.time() - itime < waitime:
@@ -521,16 +525,17 @@ class Browser(object):
     
     def runjs(self, jscode, debug=True):
         """
-        Run arbitrary Javascript code into the current frame.
+        Run arbitrary Javascript code into the current context.
+
+        @param jscode: Javascript code to injected.
+        @param debug: Set to false to disable debug for this injection.
         
-        Javascript code is injected in the page context. 
-        
-        You can Jquery even though the original page does not include it, 
-        as spynner injects the library for every page. Remember to use always
-        C{_jQuery(...)} instead of of C{jQuery} or the common {$(...)} 
+        You can Jquery even if the original page does not include it, 
+        as Spynner injects the library for every loaded  page. Remember 
+        to use C{_jQuery(...)} instead of of C{jQuery} or the common {$(...)} 
         shortcut. 
         
-        #note: You can change the jQuery alias (see L{jslib}).        
+        @note: You can change the jQuery alias (see L{jslib}).        
         """
         if debug:
             self._debug(DEBUG, "Run Javascript code: %s" % jscode)
@@ -587,7 +592,12 @@ class Browser(object):
         """
         Download the given URL using the current cookies.
         
-        If url is a path, the current base url will be pre-appended"""        
+        @param url: URL or path to download
+        @param outfd: Output file-like stream (if None, return data)
+        @param bufsize: Buffer size on read/write
+        @param cookies: Cookies in Mozilla format to use (if None, use current).
+        
+        @note: If url is a path, the current base url will be pre-appended"""        
         if cookies is None:
             cookies = self.get_mozilla_cookies()
         if url.startswith("/"):
@@ -605,6 +615,9 @@ class Browser(object):
     def set_html_parser(self, parser, soup_selector=None):
         """
         Set HTML parser used by the L{soup}.
+        
+        @param parser: Callback called to generate HTML soup.
+        @param soup_selector: Callback called to select elements in soup.
         
         When a HTML parser is set for a Browser, the property soup returns
         the current HTML soup (the result of parsing the HTML).
@@ -632,6 +645,8 @@ class Browser(object):
     def soup_has_selector(self, selector):
         """
         Return True if current HTML soup contains a given selector.
+        
+        @param selector: jQuery selector.
         
         If soup_selector is set this method will use it. Otherwise it will call 
         directly the soup object with the given selector.
@@ -667,7 +682,7 @@ class Browser(object):
     
     def snapshot(self, box, format=QImage.Format_ARGB32):
         """        
-        Take an snapshot of current frame.
+        Take an snapshot of the current frame.
         
         @param box: tuple containing box to capture (x1, y1, x2, y2).
         @param format: QImage format (see QImage::Format_*).
