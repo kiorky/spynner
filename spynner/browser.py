@@ -73,7 +73,8 @@ def _get_opener(mozilla_cookies=None):
     return urllib2.build_opener(urllib2.HTTPCookieProcessor(cookies))
    
 def _download(url, opener, outfd=None, bufsize=4096):
-    """Download a URL using a urllib2.opener.
+    """
+    Download a URL using a urllib2.opener.
     
     Returns data read if outfd is None, total bytes downloaded otherwise."""
     infd = opener.open(url)
@@ -131,7 +132,7 @@ class _ExtendedNetworkCookieJar(QNetworkCookieJar):
           if not cookie.isSessionCookie()]
         return "\n".join(header + lines)
 
-class Browser:  
+class Browser(object):           
     ignore_ssl_errors = True
     """@ivar: If True, ignore SSL certificate errors."""
     user_agent = None
@@ -167,7 +168,6 @@ class Browser:
         @param soup_selector: Callback to get selectors in soup (see L{set_html_parser}).
         """        
         self.app = QApplication(qappargs or [])
-        #from ipdb import set_trace; set_trace()
         #self.app = QCoreApplication(qappargs or [])
         if debug_level is not None:
             self.debug_level = debug_level
@@ -406,7 +406,9 @@ class Browser:
         """
         Click link or button using a jQuery selector.
         
+        #param selector: jQuery selector.
         @param wait_page_load: If True, it will wait until a new page is loaded.
+        @param wait_page_load_timeout: Seconds to wait for page before raising an exception.
                       
         @attention: By default this method will not wait for a page to load. 
         If you are clicking a link or submit button you must call this
@@ -518,7 +520,8 @@ class Browser:
     #{ Javascript 
     
     def runjs(self, jscode, debug=True):
-        """Run arbitrary Javascript code into the current frame.
+        """
+        Run arbitrary Javascript code into the current frame.
         
         Javascript code is injected in the page context. 
         
@@ -535,7 +538,7 @@ class Browser:
 
     def set_javascript_confirm_callback(self, callback):
         """
-        Set function callback for Javascript confirm.
+        Set function callback for Javascript confirm pop-ups.
         
         By default Javascript confirmations are not answered. If the webpage
         you are working pops Javascript confirmations, be sure to set a callback
@@ -581,9 +584,10 @@ class Browser:
     #{ Download files
                 
     def download(self, url, outfd=None, bufsize=4096*16, cookies=None):
-        """Download given URL using current cookies.
+        """
+        Download the given URL using the current cookies.
         
-        If url is a path, pre-ppend the current base url."""        
+        If url is a path, the current base url will be pre-appended"""        
         if cookies is None:
             cookies = self.get_mozilla_cookies()
         if url.startswith("/"):

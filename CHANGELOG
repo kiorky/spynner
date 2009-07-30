@@ -1,14 +1,14 @@
 spynner (0.0.2) unstable; urgency=low
 
-  * Use browser.html instead of browser#get_html
-  * Fix setup.py to make compatible with Win32
-  * Add URL filter mechanism
-  * Use class-method instead of burdening Browser#__init__ 
+  * Use browser.html instead of browser.get_html
+  * Fix setup.py to make it compatible with Win32
+  * Add a URL filter mechanism (with a callback)
+  * Use class-methods instead of burdening Browser.__init__ 
   * Instance variable to ignore SSL certificate errors
-  * Add epydoc API documentation
-  * Add create_webview/destroy_webview
+  * Start using epydoc format for API documentation
+  * Add create_webview/destroy_webview for GUI debugging
 
- --  <pyarnau@gmail.com>  Mon, 27 Jul 2009 20:35:21 +0200
+ --  <tokland@gmail.com>  Mon, 27 Jul 2009 20:35:21 +0200
 
 spynner (0.0.1) unstable; urgency=low
 
