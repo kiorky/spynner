@@ -24,6 +24,7 @@ Javascript/AJAX support based upon the QtWebKit framework.
 >>> browser.fill("input[name=enit]", "hola")
 >>> browser.click("input[name=b]", wait_page_load=True)
 >>> browser.runjs("console.log('I can run Javascript!')")
+>>> browser.runjs("_jQuery('div').css('border', 'solid red')")
 >>> print browser.url, len(browser.html)
 >>> browser.close()
 """
@@ -38,7 +39,7 @@ import sys
 import re
 import os
 
-from PyQt4.QtCore import SIGNAL, QUrl, QEventLoop, QString, Qt
+from PyQt4.QtCore import SIGNAL, QUrl, QEventLoop, QString, Qt, QCoreApplication
 from PyQt4.QtGui import QApplication
 from PyQt4.QtNetwork import QNetworkCookieJar, QNetworkAccessManager, QNetworkReply
 from PyQt4.QtWebKit import QWebPage, QWebView
@@ -134,7 +135,9 @@ class Browser:
     ignore_ssl_errors = True
     """@ivar: If True, ignore SSL certificate errors."""
     user_agent = None
-    """@ivar: User agent for requests (see QWebPage::userAgentForUrl for details)"""    
+    """@ivar: User agent for requests (see QWebPage::userAgentForUrl for details)"""
+    jslib = "_jQuery"
+    """@ivar: Library name for jQuery/Javascript injected by default to pages."""    
     debug_stream = sys.stderr
     """@ivar: Stream where debug output will be written."""
     debug_level = ERROR
@@ -164,6 +167,8 @@ class Browser:
         @param soup_selector: Callback to get selectors in soup (see L{set_html_parser}).
         """        
         self.app = QApplication(qappargs or [])
+        #from ipdb import set_trace; set_trace()
+        #self.app = QCoreApplication(qappargs or [])
         if debug_level is not None:
             self.debug_level = debug_level
         self.webpage = QWebPage()
@@ -346,7 +351,8 @@ class Browser:
             time.sleep(self.event_looptime)
             self.app.processEvents(QEventLoop.AllEvents)
         if self._load_status:
-            self.runjs(self.javascript + "jQuery.noConflict();", debug=False)
+            jscode = "var %s = jQuery.noConflict();" % self.jslib
+            self.runjs(self.javascript + jscode, debug=False)
         return self._load_status
 
     def _runjs_on_jquery(self, name, code):
@@ -406,7 +412,7 @@ class Browser:
         method with wait_page_load enabled or alternatively call 
         Browser#wait_page_load afterwards.
         """
-        jscode = "jQuery('%s').simulate('click')" % selector
+        jscode = "%s('%s').simulate('click')" % (self.jslib, selector)
         self._runjs_on_jquery("click", jscode)
         if wait_page_load:
             return self._wait_page_load(wait_page_load_timeout)
@@ -483,27 +489,27 @@ class Browser:
     
     def fill(self, selector, value):
         """Fill an input text with a string value using a jQuery selector."""
-        jscode = "jQuery('%s').val('%s')" % (selector, value)
+        jscode = "%s('%s').val('%s')" % (self.jslib, selector, value)
         self._runjs_on_jquery("fill", jscode)
 
     def check(self, selector):
         """Check an input checkbox using a jQuery selector."""
-        jscode = "jQuery('%s').attr('checked', true)" % selector
+        jscode = "%s('%s').attr('checked', true)" % (self.jslib, selector)
         self._runjs_on_jquery("check", jscode)
 
     def uncheck(self, selector):
         """Uncheck input checkbox using a jQuery selector"""
-        jscode = "jQuery('%s').attr('checked', false)" % selector
+        jscode = "%s('%s').attr('checked', false)" % (self.jslib, selector)
         self._runjs_on_jquery("uncheck", jscode)
 
     def choose(self, selector):        
         """Choose a radio input using a jQuery selector."""
-        jscode = "jQuery('%s').simulate('click')" % selector
+        jscode = "%s('%s').simulate('click')" % (self.jslib, selector)
         self._runjs_on_jquery("choose", jscode)
 
     def select(self, selector):        
         """Choose a option in a select using a jQuery selector."""
-        jscode = "jQuery('%s').attr('selected', 'selected')" % selector
+        jscode = "%s('%s').attr('selected', 'selected')" % (self.jslib, selector)
         self._runjs_on_jquery("select", jscode)
         
     #}
@@ -515,8 +521,12 @@ class Browser:
         
         Javascript code is injected in the page context. 
         
-        When you want to call jquery use always C{jQuery(...)}, instead of
-        the C{$(...)} shortcut.        
+        You can Jquery even though the original page does not include it, 
+        as spynner injects the library for every page. Remember to use always
+        C{_jQuery(...)} instead of of C{jQuery} or the common {$(...)} 
+        shortcut. 
+        
+        #note: You can change the jQuery alias (see L{jslib}).        
         """
         if debug:
             self._debug(DEBUG, "Run Javascript code: %s" % jscode)
