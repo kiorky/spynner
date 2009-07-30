@@ -277,7 +277,7 @@ class Browser:
     def _on_unsupported_content(self, reply):
         url = unicode(reply.url().toString())
         urlinfo = urlparse.urlsplit(url)
-        if urlinfo.scheme == "http":
+        if urlinfo.scheme in ("http", "https"):
             path = urlinfo.netloc + urlinfo.path
             if not os.path.isdir(os.path.dirname(path)):
                 os.makedirs(os.path.dirname(path))
@@ -587,7 +587,7 @@ class Browser:
             cookies = self.get_mozilla_cookies()
         if url.startswith("/"):
             url = self.get_url_from_path(url)
-        if self._get_protocol(url) != "http": 
+        if self._get_protocol(url) not in ("http", "https"): 
             raise SpynnerError("Only http downloads are supported")            
         self._debug(INFO, "Start download: %s" % url)        
         self._debug(DEBUG, "Using cookies: %s" % cookies)
