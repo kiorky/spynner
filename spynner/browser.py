@@ -15,11 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this software.  If not, see <http://www.gnu.org/licenses/>
 """
-Spynner is a stateful programmatic web browser module for Python 
-with Javascript/AJAX support based upon the QtWebKit framework.
-
-Basic example:
-    
+Spynner is a stateful programmatic web browser module for Python with 
+Javascript/AJAX support based upon the QtWebKit framework.
+   
 >>> browser = spynner.Browser()
 >>> browser.load("http://www.wordreference.com")
 >>> browser.select("#esen")
@@ -48,13 +46,13 @@ from PyQt4.QtWebKit import QWebPage, QWebView
 # Debug levels
 ERROR, WARNING, INFO, DEBUG = range(4)
 
-def first(iterable, pred=bool):
+def _first(iterable, pred=bool):
     """Return the first element in iterator that matches the predicate"""
     for item in iterable:
         if pred(item):
             return item
 
-def debug(obj, linefeed=True, outfd=sys.stderr, outputencoding="utf8"):
+def _debug(obj, linefeed=True, outfd=sys.stderr, outputencoding="utf8"):
     """Print a debug info line to stream channel"""
     if isinstance(obj, unicode):
         obj = obj.encode(outputencoding)
@@ -62,7 +60,7 @@ def debug(obj, linefeed=True, outfd=sys.stderr, outputencoding="utf8"):
     outfd.write(strobj)
     outfd.flush()
      
-def get_opener(mozilla_cookies=None):
+def _get_opener(mozilla_cookies=None):
     """Return a urllib2.opener object using (optional) mozilla cookies string"""
     if not mozilla_cookies:
         return urllib2.build_opener()
@@ -73,7 +71,7 @@ def get_opener(mozilla_cookies=None):
     cookies.load(temp_cookies.name)
     return urllib2.build_opener(urllib2.HTTPCookieProcessor(cookies))
    
-def download(url, opener, outfd=None, bufsize=4096):
+def _download(url, opener, outfd=None, bufsize=4096):
     """Download a URL using a urllib2.opener.
     
     Returns data read if outfd is None, total bytes downloaded otherwise."""
@@ -102,7 +100,7 @@ class SpynnerTimeout(Exception):
 class SpynnerJavascriptError(Exception):
     pass
                    
-class NetworkCookieJar(QNetworkCookieJar):
+class _ExtendedNetworkCookieJar(QNetworkCookieJar):
     def mozillaCookies(self):
         """
         Return string containing all cookies in cookie jar in
@@ -140,9 +138,9 @@ class Browser:
     debug_stream = sys.stderr
     """@ivar: Stream where debug output will be written."""
     debug_level = ERROR
-    """@ivar: Debug verbose level."""    
+    """@ivar: Debug verbose level (L{ERROR}, L{WARNING}, L{INFO} or L{DEBUG})."""    
     event_looptime = 0.01
-    """@ivar: Event loop dispatcher loop delay."""
+    """@ivar: Event loop dispatcher loop delay (seconds)."""
     
     _javascript_files = [
         "jquery.min.js", 
@@ -160,19 +158,18 @@ class Browser:
         Init a Browser instance.
         
         @param qappargs: Arguments for QApplication constructor.
-        @param debug_level: Debug level logging (ERROR by default)
-        @param url_filter: Callback to filter URLs. See L{set_url_filter}.
-        @param html_parser: Callback to build HTML soup. See L{set_html_parser}.
-        @param soup_selector: Callback to get selectors in soup. See L{set_html_parser}.        
+        @param debug_level: Debug level logging (L{ERROR} by default)
+        @param url_filter: Callback to filter URLs (see L{set_url_filter}).
+        @param html_parser: Callback to build HTML soup (see L{set_html_parser}).
+        @param soup_selector: Callback to get selectors in soup (see L{set_html_parser}).
         """        
         self.app = QApplication(qappargs or [])
         if debug_level is not None:
             self.debug_level = debug_level
         self.webpage = QWebPage()
-        self.webframe = self.webpage.mainFrame()
-        self.webview = None
-        
         self.webpage.userAgentForUrl = self._user_agent_for_url
+        self.webframe = self.webpage.mainFrame()
+        self.webview = None        
         
         # Callbacks
         self._url_filter = url_filter
@@ -180,7 +177,7 @@ class Browser:
         self._soup_selector = soup_selector
             
         # Javascript
-        directory = first(self._javascript_directories, os.path.isdir)
+        directory = _first(self._javascript_directories, os.path.isdir)
         if not directory:
             raise SpynnerError("Cannot find javascript directory: %s" %
                 self._javascript_directories)           
@@ -195,13 +192,10 @@ class Browser:
         self._javascript_confirm_prompt = None
         
         # Network Access Manager and cookies
-        self.operation_names = dict(
-            (getattr(QNetworkAccessManager, s + "Operation"), s.lower()) 
-            for s in ("Get", "Head", "Post", "Put"))
         self.manager = QNetworkAccessManager()
         self.manager.createRequest = self._manager_create_request 
         self.webpage.setNetworkAccessManager(self.manager)            
-        self.cookiesjar = NetworkCookieJar()
+        self.cookiesjar = _ExtendedNetworkCookieJar()
         self.manager.setCookieJar(self.cookiesjar)
         self.manager.connect(self.manager, 
             SIGNAL("sslErrors (QNetworkReply *, const QList<QSslError> &)"),
@@ -212,6 +206,9 @@ class Browser:
         self.manager.connect(self.manager,
             SIGNAL('authenticationRequired(QNetworkReply *, QAuthenticator *)'),
             self._on_authentication_required)   
+        self.operation_names = dict(
+            (getattr(QNetworkAccessManager, s + "Operation"), s.lower()) 
+            for s in ("Get", "Head", "Post", "Put"))
         
         # Webpage slots
          
@@ -226,7 +223,7 @@ class Browser:
     def _debug(self, level, *args):
         if level <= self.debug_level:
             kwargs = dict(outfd=self.debug_stream)
-            debug(*args, **kwargs)
+            _debug(*args, **kwargs)
 
     def _user_agent_for_url(self, url):
         if self.user_agent:
@@ -238,22 +235,25 @@ class Browser:
             url = unicode(reply.url().toString())
             self._debug(WARNING, "SSL certificate error ignored: %s" % url)
             reply.ignoreSslErrors()
+        else:
+            self._debug(WARNING, "SSL certificate error: %s" % url)
 
     def _on_authentication_required(self, reply, authenticator):
         url = unicode(reply.url().toString())
         realm = unicode(authenticator.realm())
-        self._debug("HTTP auth required: for %s (realm: %s)" % (url, realm))
+        self._debug("HTTP auth required: %s (realm: %s)" % (url, realm))
         if not self._http_authentication_callback:
             self._debug(WARNING, "HTTP auth required, but no callback defined")
             return        
         credentials = self._http_authentication_callback(url, realm)        
         if credentials:            
             user, password = credentials
-            self._debug(INFO, "HTTP Authentication callback: %s/*****" % user)
+            self._debug(INFO, "HTTP auth credentials: %s/%s" % 
+                (user, "*"*len(password)))
             authenticator.setUser(user)
             authenticator.setPassword(password)
         else:
-            self._debug(WARNING, "HTTP Authentication callback returned no answer")
+            self._debug(WARNING, "HTTP auth callback returned no credentials")
         
     def _manager_create_request(self, operation, request, data):
         url = unicode(request.url().toString())
@@ -265,7 +265,7 @@ class Browser:
             operation, request, data)        
         if self._url_filter:
             if not self._url_filter(self.operation_names[operation], url):
-                self._debug(INFO, "URL filtered by: %s" % url)
+                self._debug(INFO, "URL filtered: %s" % url)
                 reply.abort()
         return reply
 
@@ -308,7 +308,7 @@ class Browser:
             (url, smessage))
         if self._javascript_confirm_callback:
             value = self._javascript_confirm_callback(url, smessage)
-            self._debug(INFO, "Javascript confirm callback returned: %s" % value)
+            self._debug(INFO, "Javascript confirm callback returned %s" % value)
             return value 
         return QWebPage.javaScriptConfirm(self.webpage, webframe, message)
 
@@ -457,21 +457,21 @@ class Browser:
         del self.webview 
 
     def show(self):
-        """Show browser window."""
+        """Show webview browser."""
         if not self.webview:
-            raise SpynnerError("Cannot show window when webview disabled")
+            raise SpynnerError("Webview is not initialized")
         self.webview.show()
 
     def hide(self):
-        """Hide browser window."""
+        """Hide webview browser."""
         if not self.webview:
-            raise SpynnerError("Cannot hide window when webview disabled")
+            raise SpynnerError("Webview is not initialized")
         self.webview.hide()
 
     def browse(self):
         """Let the user browse the current page (infinite loop).""" 
         if not self.webview:
-            raise SpynnerError("Cannot browse with webview disabled")
+            raise SpynnerError("Webview is not initialized")
         self.show()
         while self.webview:
             self.app.processEvents()
@@ -581,7 +581,7 @@ class Browser:
             raise SpynnerError("Only http downloads are supported")            
         self._debug(INFO, "Start download: %s" % url)        
         self._debug(DEBUG, "Using cookies: %s" % cookies)
-        return download(url, get_opener(cookies), outfd, bufsize)
+        return _download(url, _get_opener(cookies), outfd, bufsize)
     
     #}
         
@@ -651,7 +651,7 @@ class Browser:
     #{ Miscellaneous
     
     def get_url_from_path(self, path):
-        """Return the URL for a given path using current URL as base url."""
+        """Return the URL for a given path using the current URL as base."""
         return urlparse.urljoin(self.url, path)
 
     def set_url_filter(self, url_filter):
@@ -659,11 +659,10 @@ class Browser:
         Set function callback to filter URL.
         
         By default all requested elements of a page are loaded. That includes 
-        stylesheets, images and many other things that user may not need at all. 
+        stylesheets, images and many other things that you may not need at all. 
         
         Use this method to define the callback that will be called every time 
-        a new request is made and which decides if it's loaded or not. The 
-        callback must have this signature: 
+        a new request is made. The callback must have this signature: 
         
         C{my_url_filter(operation, url)}: 
                         
