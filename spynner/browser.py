@@ -139,8 +139,6 @@ class _ExtendedNetworkCookieJar(QNetworkCookieJar):
         """
         def str2bool(value):
             return {"TRUE": True, "FALSE": False}[value]
-        def str2byte(value):            
-            return str(value)        
         def get_cookie(line):
             fields = map(str.strip, line.split("\t"))
             if len(fields) != 7:
@@ -162,18 +160,15 @@ class Browser:
     user_agent = None
     """@ivar: User agent for requests (see QWebPage::userAgentForUrl for details)"""
     jslib = "_jQuery"
-    """@ivar: Library name for jQuery/Javascript injected by default to pages."""    
+    """@ivar: Library name for jQuery library injected by default to pages."""    
     debug_stream = sys.stderr
-    """@ivar: Stream where debug output will be written."""
+    """@ivar: File-like stream where debug output will be written."""
     debug_level = ERROR
     """@ivar: Debug verbose level (L{ERROR}, L{WARNING}, L{INFO} or L{DEBUG})."""    
     event_looptime = 0.01
     """@ivar: Event loop dispatcher loop delay (seconds)."""
     
-    _javascript_files = [
-        "jquery.min.js", 
-        "jquery.simulate.js"
-    ]
+    _javascript_files = ["jquery.min.js", "jquery.simulate.js"]
 
     _javascript_directories = [
         os.path.join(os.path.dirname(__file__), "../javascript"),
@@ -232,8 +227,7 @@ class Browser:
             (getattr(QNetworkAccessManager, s + "Operation"), s.lower()) 
             for s in ("Get", "Head", "Post", "Put"))
         
-        # Webpage slots
-         
+        # Webpage slots         
         self.webpage.setForwardUnsupportedContent(True)
         self.webpage.connect(self.webpage,
             SIGNAL('unsupportedContent(QNetworkReply *)'), 
@@ -253,8 +247,8 @@ class Browser:
         return QWebPage.userAgentForUrl(self.webpage, url)
     
     def _on_manager_ssl_errors(self, reply, errors):
+        url = unicode(reply.url().toString())
         if self.ignore_ssl_errors:
-            url = unicode(reply.url().toString())
             self._debug(WARNING, "SSL certificate error ignored: %s" % url)
             reply.ignoreSslErrors()
         else:
@@ -270,7 +264,7 @@ class Browser:
         credentials = self._http_authentication_callback(url, realm)        
         if credentials:            
             user, password = credentials
-            self._debug(INFO, "HTTP auth credentials: %s/%s" % 
+            self._debug(INFO, "callback returned HTTP credentials: %s/%s" % 
                 (user, "*"*len(password)))
             authenticator.setUser(user)
             authenticator.setPassword(password)
@@ -289,6 +283,8 @@ class Browser:
             if not self._url_filter(self.operation_names[operation], url):
                 self._debug(INFO, "URL filtered: %s" % url)
                 reply.abort()
+            else:
+                self._debug(DEBUG, "URL not filtered: %s" % url)
         return reply
 
     def _on_unsupported_content(self, reply):
@@ -298,7 +294,9 @@ class Browser:
             path = urlinfo.netloc + urlinfo.path
             if not os.path.isdir(os.path.dirname(path)):
                 os.makedirs(os.path.dirname(path))
-            self.download(url, outfd=open(path, "wb"))            
+            self._debug("Start download: %s (%s)" % (url, path))
+            self.download(url, outfd=open(path, "wb"))
+            self._debug("Download finished: %s (%s)" % (url, path))            
 
     def _on_reply(self, reply):
         url = unicode(reply.url().toString())
@@ -386,16 +384,12 @@ class Browser:
         if _get_js_obj_length(res) < 1:
             raise SpynnerJavascriptError("error on %s: %s" % (name, code))
 
-    def _get_protocol(self, url):
-        match = re.match("^(\w+)://", url)
-        return (match.group(1) if match else None)
-
     def _get_html(self):
         return unicode(self.webframe.toHtml())
 
     def _get_soup(self):
         if not self._html_parser:
-            raise SpynnerError("Cannot get soup without a HTML parser")
+            raise SpynnerError("Cannot get soup with no HTML parser defined")
         return self._html_parser(self.html)
 
     def _get_url(self):
@@ -415,21 +409,22 @@ class Browser:
     #{ Basic interaction with browser
 
     def load(self, url):
-        """Load a web page and return status (boolean)."""
+        """Load a web page and return status (a boolean)."""
         self.webframe.load(QUrl(url))
         return self._wait_page_load()
 
     def click(self, selector, wait_page_load=False, wait_page_load_timeout=None):
         """
-        Click any clickable element (link, button, submit input) using a jQuery selector.
+        Click any clickable element (link, button, submit input).
         
         @param selector: jQuery selector.
         @param wait_page_load: If True, it will wait until a new page is loaded.
-        @param wait_page_load_timeout: Seconds to wait for page before raising an exception.
+        @param wait_page_load_timeout: Seconds to wait for the page to load before 
+                                       raising an exception.
                       
         @attention: By default this method will not wait for a page to load. 
         If you are clicking a link or submit button, you must call this
-        method with C{wait_page_load=True} or alternatively call 
+        method with C{wait_page_load=True} or, alternatively, call 
         L{wait_page_load} afterwards.
         """
         jscode = "%s('%s').simulate('click')" % (self.jslib, selector)
@@ -453,8 +448,9 @@ class Browser:
         
         @param waitime: Time to wait (seconds).
         
-        This is an active wait, the event and events loop will be run.
-        This function is useful to wait for synchronous Javascript events.
+        This is an active wait, the events loop will still be run, so this
+        may be useful to wait for synchronous Javascript events and DOM
+        changes.
         """   
         itime = time.time()
         while time.time() - itime < waitime:
@@ -463,10 +459,10 @@ class Browser:
 
     def close(self):
         """Close Browser instance and release resources."""
-        if self.webview:
-            del self.webview
         if self.webpage:
             del self.webpage
+        if self.webview:
+            del self.webview
 
     #}
                       
@@ -474,6 +470,8 @@ class Browser:
     
     def create_webview(self):
         """Create a QWebView object and insert current QWebPage."""
+        if self.webview:
+            raise SpynnerError("Cannot create webview (already initialized)")
         self.webview = QWebView()
         self.webview.setPage(self.webpage)
         window = self.webview.window()
@@ -548,14 +546,14 @@ class Browser:
         Inject Javascript code into the current context of page.
 
         @param jscode: Javascript code to injected.
-        @param debug: Set to false to disable debug for this injection.
+        @param debug: Set to False to disable debug output for this injection.
         
-        You can Jquery even if the original page does not include it, 
-        as Spynner injects the library for every loaded  page. Remember 
-        to use C{_jQuery(...)} instead of of C{jQuery} or the common {$(...)} 
+        You can call Jquery even if the original page does not include it 
+        as Spynner injects the library for every loaded page. You must 
+        use C{_jQuery(...)} instead of of C{jQuery} or the common {$(...)} 
         shortcut. 
         
-        @note: You can change the jQuery alias (see L{jslib}).        
+        @note: You can change the _jQuery alias (see L{jslib}).        
         """
         if debug:
             self._debug(DEBUG, "Run Javascript code: %s" % jscode)
@@ -582,7 +580,7 @@ class Browser:
         """
         Set function callback for Javascript prompt.
         
-        By default Javascript confirmations are not answered. If the webpage
+        By default Javascript prompts are not answered. If the webpage
         you are working pops Javascript prompts, be sure to set a callback
         for them. 
         
@@ -592,7 +590,7 @@ class Browser:
             - message: String message.
             - defaultvalue: Default value for prompt answer
             
-        Callback should return string or None to cancel prompt.
+        The callback should return a string with the answer or None to cancel the prompt.
         """
         self._javascript_prompt_callback = callback
 
@@ -621,12 +619,16 @@ class Browser:
         @param bufsize: Buffer size on read/write
         @param cookies: Cookies in Mozilla format to use (if None, use current).
         
-        @note: If url is a path, the current base url will be pre-appended"""        
+        @note: If url is a path, the current base url will be pre-appended for you.
+        
+        @warning: Only http/https download are supported.
+        """        
         if cookies is None:
             cookies = self.get_cookies()
         if url.startswith("/"):
             url = self.get_url_from_path(url)
-        if self._get_protocol(url) not in ("http", "https"): 
+        protocol = urlparse.urlparse(url).scheme
+        if protocol not in ("http", "https"): 
             raise SpynnerError("Only http/https downloads are supported")            
         self._debug(INFO, "Start download: %s" % url)        
         self._debug(DEBUG, "Using cookies: %s" % cookies)
@@ -642,8 +644,8 @@ class Browser:
         
         @param parser: Callback called to generate the soup.
         
-        When a HTML parser is set for a Browser, the property soup returns
-        the current HTML soup (the result of parsing the HTML).        
+        When a HTML parser is set for a Browser, the property L{soup} returns
+        the parsed HTML.        
         """
         self._html_parser = parser
 
@@ -662,13 +664,13 @@ class Browser:
         Set the callback that will called when a page asks for HTTP
         authentication. The callback must have this signature: 
         
-        C{http_authentication_callback(url, realm)} 
+        C{http_authentication_callback(url, realm)}: 
                         
-            - C{url}: URL where the requested was made
-            - C{realm}: Realm requiring authentication
+            - C{url}: URL where the requested was made.
+            - C{realm}: Realm requiring authentication.
             
         The callback should return a pair of string containing (user, password) 
-        or a false value to leave it unanswered.
+        or False/None if you don't to answer.
         """
         self._http_authentication_callback = callback
     
@@ -678,11 +680,11 @@ class Browser:
     
     def snapshot(self, box, format=QImage.Format_ARGB32):
         """        
-        Take an snapshot of the current frame.
+        Take an image snapshot of the current frame.
         
-        @param box: tuple containing box to capture (x1, y1, x2, y2).
+        @param box: 4-element tuple containing box to capture (x1, y1, x2, y2).
         @param format: QImage format (see QImage::Format_*).
-        @return: QImage image (see QImage for details).
+        @return: A QImage image.
         """
         x1, y1, x2, y2 = box        
         w, h = (x2 - x1), (y2 - y1)
@@ -702,15 +704,15 @@ class Browser:
         Set function callback to filter URL.
         
         By default all requested elements of a page are loaded. That includes 
-        stylesheets, images and many other things that you may not need at all. 
-        
+        stylesheets, images and many other elements that you may not need at all.         
         Use this method to define the callback that will be called every time 
         a new request is made. The callback must have this signature: 
         
         C{my_url_filter(operation, url)}: 
                         
-            - C{operation}: string with HTTP operation: get, head, post or put.
-            - C{url}: requested URL
+            - C{operation}: string with HTTP operation: C{get}, C{head}, 
+                            C{post} or C{put}.
+            - C{url}: requested item URL.
             
         It should return C{True} (proceed) or C{False} (reject).
         """
