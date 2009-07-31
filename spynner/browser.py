@@ -20,11 +20,11 @@ Javascript/AJAX support based upon the QtWebKit framework.
    
 >>> browser = spynner.Browser()
 >>> browser.load("http://www.wordreference.com")
+>>> browser.runjs("console.log('I can run Javascript!')")
+>>> browser.runjs("_jQuery('div').css('border', 'solid red')") # and jQuery!
 >>> browser.select("#esen")
 >>> browser.fill("input[name=enit]", "hola")
 >>> browser.click("input[name=b]", wait_page_load=True)
->>> browser.runjs("console.log('I can run Javascript!')")
->>> browser.runjs("_jQuery('div').css('border', 'solid red')") # and jQuery!
 >>> print browser.url, len(browser.html)
 >>> browser.close()
 """
@@ -39,9 +39,11 @@ import sys
 import re
 import os
 
-from PyQt4.QtCore import SIGNAL, QUrl, QEventLoop, QString, Qt, QCoreApplication, QSize
+from PyQt4.QtCore import SIGNAL, QUrl, QEventLoop, QString, Qt, QCoreApplication
+from PyQt4.QtCore import QSize, QDateTime
 from PyQt4.QtGui import QApplication, QImage, QPainter, QRegion
-from PyQt4.QtNetwork import QNetworkCookieJar, QNetworkAccessManager, QNetworkReply
+from PyQt4.QtNetwork import QNetworkCookie, QNetworkAccessManager, QNetworkReply
+from PyQt4.QtNetwork import QNetworkCookieJar
 from PyQt4.QtWebKit import QWebPage, QWebView
 
 # Debug levels
@@ -105,7 +107,7 @@ class SpynnerJavascriptError(Exception):
 class _ExtendedNetworkCookieJar(QNetworkCookieJar):
     def mozillaCookies(self):
         """
-        Return all cookies in mozilla text format:
+        Return all cookies in Mozilla text format:
         
         # domain domain_flag path secure_connection expiration name value
         
@@ -130,6 +132,29 @@ class _ExtendedNetworkCookieJar(QNetworkCookieJar):
         lines = [get_line(cookie) for cookie in self.allCookies() 
           if not cookie.isSessionCookie()]
         return "\n".join(header + lines)
+
+    def setMozillaCookies(self, string_cookies):
+        """Set all cookies from Mozilla test format string.
+        .firefox.com     TRUE   /  FALSE  946684799   MOZILLA_ID  100103        
+        """
+        def str2bool(value):
+            return {"TRUE": True, "FALSE": False}[value]
+        def str2byte(value):            
+            return str(value)        
+        def get_cookie(line):
+            fields = map(str.strip, line.split("\t"))
+            if len(fields) != 7:
+                return
+            domain, domain_flag, path, is_secure, expiration, name, value = fields
+            cookie = QNetworkCookie(name, value)
+            cookie.setDomain(domain)
+            cookie.setPath(path)
+            cookie.setSecure(str2bool(is_secure))
+            cookie.setExpirationDate(QDateTime.fromTime_t(int(expiration)))
+            return cookie
+        cookies = [get_cookie(line) for line in string_cookies.splitlines() 
+          if line.strip() and not line.strip().startswith("#")]
+        self.setAllCookies(filter(bool, cookies))
 
 class Browser(object):           
     ignore_ssl_errors = True
@@ -580,9 +605,13 @@ class Browser(object):
     
     #{ Cookies
     
-    def get_mozilla_cookies(self):
+    def get_cookies(self):
         """Return string containing the current cookies in Mozilla format.""" 
         return self.cookiesjar.mozillaCookies()
+
+    def set_cookies(self, string_cookies):
+        """Set cookies from Mozilla format string.""" 
+        return self.cookiesjar.setMozillaCookies(string_cookies)
 
     #}
     
@@ -599,11 +628,11 @@ class Browser(object):
         
         @note: If url is a path, the current base url will be pre-appended"""        
         if cookies is None:
-            cookies = self.get_mozilla_cookies()
+            cookies = self.get_cookies()
         if url.startswith("/"):
             url = self.get_url_from_path(url)
         if self._get_protocol(url) not in ("http", "https"): 
-            raise SpynnerError("Only http downloads are supported")            
+            raise SpynnerError("Only http/https downloads are supported")            
         self._debug(INFO, "Start download: %s" % url)        
         self._debug(DEBUG, "Using cookies: %s" % cookies)
         return _download(url, _get_opener(cookies), outfd, bufsize)

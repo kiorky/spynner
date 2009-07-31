@@ -123,11 +123,20 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.browser.runjs(jscode)
         self.assertTrue("hello there!" in self.browser.html)
 
-    def test_get_mozilla_cookies(self):
-        cookies = self.browser.get_mozilla_cookies()
+    def test_get_cookies(self):
+        cookies = self.browser.get_cookies()
         self.assertTrue("# Netscape HTTP Cookie File" in cookies)
         self.assertTrue("mycookie" in cookies)
         self.assertTrue("12345" in cookies)
+
+    def test_set_cookies(self):
+        cookies = """
+        .firefox.com\tTRUE\t/\tFALSE\t946684799\tMOZILLA_ID\t100103
+        """
+        self.browser.set_cookies(cookies)
+        cookies = self.browser.get_cookies()
+        self.assertTrue("mycookie" not in cookies)
+        self.assertTrue("MOZILLA_ID" in cookies)
 
     def test_javascript_console_message(self):
         self.browser.runjs("console.log('hello there!')")
@@ -245,8 +254,9 @@ class SpynnerBrowserTest(unittest.TestCase):
         image = self.browser.snapshot((100, 100, 200, 250))
         self.assertTrue(type(image) == QImage)
         self.assertEqual((image.width(), image.height()), (100, 150))
-def suite():
-                                            
+        
+        
+def suite():                                            
     return unittest.TestLoader().loadTestsFromTestCase(SpynnerBrowserTest)
 
 if __name__ == '__main__':
