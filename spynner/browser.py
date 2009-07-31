@@ -93,16 +93,16 @@ def _download(url, opener, outfd=None, bufsize=4096):
     return sum(output) if outfd else "".join(output)
 
 class SpynnerError(Exception):
-    pass
+    """General Spynner error."""
 
 class SpynnerPageError(Exception):
-    pass
+    """Error loading page."""
 
 class SpynnerTimeout(Exception):
-    pass
+    """A timeout (usually on page load) has been reached."""
 
 class SpynnerJavascriptError(Exception):
-    pass
+    """Error on the injected Javascript code.""" 
                    
 class _ExtendedNetworkCookieJar(QNetworkCookieJar):
     def mozillaCookies(self):
@@ -156,7 +156,7 @@ class _ExtendedNetworkCookieJar(QNetworkCookieJar):
           if line.strip() and not line.strip().startswith("#")]
         self.setAllCookies(filter(bool, cookies))
 
-class Browser(object):           
+class Browser:
     ignore_ssl_errors = True
     """@ivar: If True, ignore SSL certificate errors."""
     user_agent = None
@@ -421,9 +421,9 @@ class Browser(object):
 
     def click(self, selector, wait_page_load=False, wait_page_load_timeout=None):
         """
-        Click link or button using a jQuery selector.
+        Click any clickable element (link, button, submit input) using a jQuery selector.
         
-        #param selector: jQuery selector.
+        @param selector: jQuery selector.
         @param wait_page_load: If True, it will wait until a new page is loaded.
         @param wait_page_load_timeout: Seconds to wait for page before raising an exception.
                       
@@ -536,14 +536,16 @@ class Browser(object):
         """Choose a option in a select using a jQuery selector."""
         jscode = "%s('%s').attr('selected', 'selected')" % (self.jslib, selector)
         self._runjs_on_jquery("select", jscode)
-        
+    
+    submit = click
+      
     #}
     
     #{ Javascript 
     
     def runjs(self, jscode, debug=True):
         """
-        Run arbitrary Javascript code into the current context.
+        Inject Javascript code into the current context of page.
 
         @param jscode: Javascript code to injected.
         @param debug: Set to false to disable debug for this injection.
@@ -636,9 +638,9 @@ class Browser(object):
     
     def set_html_parser(self, parser):
         """
-        Set HTML parser used by the L{soup}.
+        Set HTML parser used to generate the HTML L{soup}.
         
-        @param parser: Callback called to generate HTML soup.
+        @param parser: Callback called to generate the soup.
         
         When a HTML parser is set for a Browser, the property soup returns
         the current HTML soup (the result of parsing the HTML).        
@@ -646,7 +648,7 @@ class Browser(object):
         self._html_parser = parser
 
     def html_contains(self, regexp):
-        """Return True if current HTML contains a regular expression."""
+        """Return True if current HTML contains a given regular expression."""
         return bool(re.search(regexp, self.html))
 
     #}
