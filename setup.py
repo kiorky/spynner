@@ -18,7 +18,30 @@ from distutils.core import setup
 from distutils.cmd import Command
 
 version = "0.0.2"
+url = "http://code.google.com/p/spynner"
 
+class gen_doc(Command):
+    """Generate the HTML API documentation using epydoc
+
+    Output files to docs/api.
+    """
+    description = "generate the api doc"
+    user_options = []
+    target_dir = "docs/api"
+    source = ["spynner/browser.py"]
+
+    def initialize_options(self):
+        self.all = None
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        import os
+        os.system("epydoc -v --html --fail-on-docstring-warning --no-private " + 
+                  "--no-sourcecode -n spynner -u %s -o %s %s" % 
+                  (url, self.target_dir, " ".join(self.source)))
+                  
 setup(
     name="spynner",
     version=version,
@@ -30,6 +53,7 @@ setup(
         "spynner",
     ],
     #install_requires=['pyqt'],
+    cmdclass={'gen_doc': gen_doc},    
     scripts=[],
     license="GNU Public License v3.0",
     long_description="""
