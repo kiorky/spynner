@@ -181,7 +181,7 @@ class Browser(object):
     ]
     
     def __init__(self, qappargs=None, debug_level=None, url_filter=None,
-            html_parser=None, soup_selector=None):
+            html_parser=None):
         """        
         Init a Browser instance.
         
@@ -189,7 +189,6 @@ class Browser(object):
         @param debug_level: Debug level logging (L{ERROR} by default)
         @param url_filter: Callback to filter URLs (see L{set_url_filter}).
         @param html_parser: Callback to build HTML soup (see L{set_html_parser}).
-        @param soup_selector: Callback to get selectors in soup (see L{set_html_parser}).
         """        
         self.app = QApplication(qappargs or [])
         #self.app = QCoreApplication(qappargs or [])
@@ -203,7 +202,6 @@ class Browser(object):
         # Callbacks
         self._url_filter = url_filter
         self._html_parser = html_parser
-        self._soup_selector = soup_selector
             
         # Javascript
         directory = _first(self._javascript_directories, os.path.isdir)
@@ -641,48 +639,20 @@ class Browser(object):
         
     #{ HTML and tag soup parsing
     
-    def set_html_parser(self, parser, soup_selector=None):
+    def set_html_parser(self, parser):
         """
         Set HTML parser used by the L{soup}.
         
         @param parser: Callback called to generate HTML soup.
-        @param soup_selector: Callback called to select elements in soup.
         
         When a HTML parser is set for a Browser, the property soup returns
-        the current HTML soup (the result of parsing the HTML).
-        
-        Set soup_selector if you are planning to use soup_has_selector method.
-        This argument must be a callback with signature:
-            
-        soup_selector(soup, selector)
-        
-            - soup: HTML soup
-            - selector: selector string
-            
-        This callback hould return a true value if the soup does contain
-        the selector. If your soup object can be directly called with a 
-        selector as unique argument (as PyQuery does, for exampel), you
-        don't need to set it.
+        the current HTML soup (the result of parsing the HTML).        
         """
         self._html_parser = parser
-        self._soup_selector = soup_selector
 
     def html_contains(self, regexp):
         """Return True if current HTML contains a regular expression."""
         return bool(re.search(regexp, self.html))
-
-    def soup_has_selector(self, selector):
-        """
-        Return True if current HTML soup contains a given selector.
-        
-        @param selector: jQuery selector.
-        
-        If soup_selector is set this method will use it. Otherwise it will call 
-        directly the soup object with the given selector.
-        """
-        if self._soup_selector is None:
-            return self.soup(selector)
-        return self._soup_selector(self.soup, selector)
 
     #}
 
