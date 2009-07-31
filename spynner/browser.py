@@ -16,17 +16,7 @@
 # along with this software.  If not, see <http://www.gnu.org/licenses/>
 """
 Spynner is a stateful programmatic web browser module for Python with 
-Javascript/AJAX support based upon the QtWebKit framework.
-   
->>> browser = spynner.Browser()
->>> browser.load("http://www.wordreference.com")
->>> browser.runjs("console.log('I can run Javascript!')")
->>> browser.runjs("_jQuery('div').css('border', 'solid red')") # and jQuery!
->>> browser.select("#esen")
->>> browser.fill("input[name=enit]", "hola")
->>> browser.click("input[name=b]", wait_page_load=True)
->>> print browser.url, len(browser.html)
->>> browser.close()
+Javascript/AJAX support based upon the QtWebKit framework.   
 """
 
 import itertools
@@ -155,6 +145,19 @@ class _ExtendedNetworkCookieJar(QNetworkCookieJar):
         self.setAllCookies(filter(bool, cookies))
 
 class Browser:
+    """
+    Stateful programmatic web browser class based upon QtWebKit.   
+    
+    >>> browser = Browser()
+    >>> browser.load("http://www.wordreference.com")
+    >>> browser.runjs("console.log('I can run Javascript!')")
+    >>> browser.runjs("_jQuery('div').css('border', 'solid red')") # and jQuery!
+    >>> browser.select("#esen")
+    >>> browser.fill("input[name=enit]", "hola")
+    >>> browser.click("input[name=b]", wait_page_load=True)
+    >>> print browser.url, len(browser.html)
+    >>> browser.close()
+    """
     ignore_ssl_errors = True
     """@ivar: If True, ignore SSL certificate errors."""
     user_agent = None
@@ -182,14 +185,18 @@ class Browser:
         @param qappargs: Arguments for QApplication constructor.
         @param debug_level: Debug level logging (L{ERROR} by default)
         """        
-        self.app = QApplication(qappargs or [])
-        #self.app = QCoreApplication(qappargs or [])
+        self.application = QApplication(qappargs or [])
+        """PyQt4.QtGui.Qapplication object."""
+        #self.application = QCoreApplication(qappargs or [])
         if debug_level is not None:
             self.debug_level = debug_level
         self.webpage = QWebPage()
+        """PyQt4.QtWebKit.QWebPage object."""
         self.webpage.userAgentForUrl = self._user_agent_for_url
         self.webframe = self.webpage.mainFrame()
-        self.webview = None        
+        """PyQt4.QtWebKit.QWebFrame main webframe object."""
+        self.webview = None
+        """PyQt4.QtWebKit.QWebView object."""        
         self._url_filter = None
         self._html_parser = None
             
@@ -210,9 +217,11 @@ class Browser:
         
         # Network Access Manager and cookies
         self.manager = QNetworkAccessManager()
+        """PyQt4.QtNetwork.QTNetworkAccessManager object."""
         self.manager.createRequest = self._manager_create_request 
         self.webpage.setNetworkAccessManager(self.manager)            
         self.cookiesjar = _ExtendedNetworkCookieJar()
+        """PyQt4.QtNetwork.QNetworkCookieJar object."""
         self.manager.setCookieJar(self.cookiesjar)
         self.manager.connect(self.manager, 
             SIGNAL("sslErrors (QNetworkReply *, const QList<QSslError> &)"),
@@ -223,7 +232,7 @@ class Browser:
         self.manager.connect(self.manager,
             SIGNAL('authenticationRequired(QNetworkReply *, QAuthenticator *)'),
             self._on_authentication_required)   
-        self.operation_names = dict(
+        self._operation_names = dict(
             (getattr(QNetworkAccessManager, s + "Operation"), s.lower()) 
             for s in ("Get", "Head", "Post", "Put"))
         
@@ -273,14 +282,14 @@ class Browser:
         
     def _manager_create_request(self, operation, request, data):
         url = unicode(request.url().toString())
-        operation_name = self.operation_names[operation].upper()
+        operation_name = self._operation_names[operation].upper()
         self._debug(INFO, "Request: %s %s" % (operation_name, url))
         for h in request.rawHeaderList():
             self._debug(DEBUG, "  %s: %s" % (h, request.rawHeader(h)))
         reply = QNetworkAccessManager.createRequest(self.manager, 
             operation, request, data)        
         if self._url_filter:
-            if not self._url_filter(self.operation_names[operation], url):
+            if not self._url_filter(self._operation_names[operation], url):
                 self._debug(INFO, "URL filtered: %s" % url)
                 reply.abort()
             else:
@@ -364,7 +373,7 @@ class Browser:
             if timeout and time.time() - itime > timeout:
                 raise SpynnerTimeout("Timeout reached: %d seconds" % timeout)
             time.sleep(self.event_looptime)
-            self.app.processEvents(QEventLoop.AllEvents)
+            self.application.processEvents(QEventLoop.AllEvents)
         if self._load_status:
             jscode = "var %s = jQuery.noConflict();" % self.jslib
             self.runjs(self.javascript + jscode, debug=False)
@@ -397,15 +406,15 @@ class Browser:
 
     # Properties
                  
+    url = property(_get_url)
+    """Current URL."""        
+                 
     html = property(_get_html)
     """Rendered HTML in current page."""
                  
     soup = property(_get_soup)
     """HTML soup (see L{set_html_parser})."""
-        
-    url = property(_get_url)
-    """Current URL."""        
-       
+               
     #{ Basic interaction with browser
 
     def load(self, url):
@@ -454,7 +463,7 @@ class Browser:
         """   
         itime = time.time()
         while time.time() - itime < waitime:
-            self.app.processEvents()
+            self.application.processEvents()
             time.sleep(self.event_looptime)        
 
     def close(self):
@@ -503,7 +512,7 @@ class Browser:
             raise SpynnerError("Webview is not initialized")
         self.show()
         while self.webview:
-            self.app.processEvents()
+            self.application.processEvents()
             time.sleep(self.event_looptime)
 
     #}
