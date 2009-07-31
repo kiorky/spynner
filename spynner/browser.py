@@ -180,15 +180,12 @@ class Browser(object):
         os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
     
-    def __init__(self, qappargs=None, debug_level=None, url_filter=None,
-            html_parser=None):
+    def __init__(self, qappargs=None, debug_level=None):
         """        
         Init a Browser instance.
         
         @param qappargs: Arguments for QApplication constructor.
         @param debug_level: Debug level logging (L{ERROR} by default)
-        @param url_filter: Callback to filter URLs (see L{set_url_filter}).
-        @param html_parser: Callback to build HTML soup (see L{set_html_parser}).
         """        
         self.app = QApplication(qappargs or [])
         #self.app = QCoreApplication(qappargs or [])
@@ -198,10 +195,8 @@ class Browser(object):
         self.webpage.userAgentForUrl = self._user_agent_for_url
         self.webframe = self.webpage.mainFrame()
         self.webview = None        
-        
-        # Callbacks
-        self._url_filter = url_filter
-        self._html_parser = html_parser
+        self._url_filter = None
+        self._html_parser = None
             
         # Javascript
         directory = _first(self._javascript_directories, os.path.isdir)
