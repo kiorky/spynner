@@ -1,17 +1,17 @@
 = Introduction =
 
-Spynner is a programmatic web browser module for Python. It is based upon the [http://trac.webkit.org/wiki/QtWebKit PyQtWebKit] framework, so it supports Javascript, AJAX, and every other technology that [http://webkit.org/ WebKit] handles. 
+Spynner is a stateful programmatic web browser module for Python. It is based upon [http://www.qtsoftware.com/ Qt] and [http://webkit.org/ WebKit], so it supports Javascript, AJAX, and every other technology that !WebKit is able to handle (Flash, SVG, ...). Spynner takes advantage of [http://jquery.com jQuery], a powerful Javascript library that makes the interaction with pages and event simulation really easy.  
 
-Using spynner you would able to simulate a web browser from Python with no GUI (though a browser window can be opened for debugging purposes). Spynner may be used to implement crawlers and test websites.
+Using Spynner you would able to simulate a web browser with no GUI (though a browsing window can be opened for debugging purposes), so it may be used to implement crawlers or acceptance testing tools.
 
 = Dependencies =
 
   * [http://www.python.org Python] (>=2.5)
-  * [http://www.riverbankcomputing.co.uk/software/pyqt/download PyQt] (>=4.4.3): Python wrappers for the Qt framework.
+  * [http://www.riverbankcomputing.co.uk/software/pyqt/download PyQt] (>=4.4.3): Python wrappers for the [http://www.qtsoftware.com/ Qt] framework.
 
 = Install =
 
-  * A release version (recommended):
+  * A [http://code.google.com/p/spynner/downloads/list release] version (recommended):
 
 {{{
 $ wget http://spynner.googlecode.com/files/spynner-VERSION.tgz
@@ -34,58 +34,59 @@ $ cd spynner-trunk
 $ sudo python setup.py install
 }}}
 
-= Usage =
-
-Here is the API:
+= API =
 
 http://tokland.freehostia.com/googlecode/spynner/api/
+
+You can generate the API locally (will create docs/api directory):
+
+$ python setup.py gen_doc
+
+= Usage =
 
 A basic example:
 
 {{{
 import spynner
 
-browser = spynner.Browser(debug_level=spynner.DEBUG)
+browser = spynner.Browser()
 browser.load("http://www.wordreference.com")
 browser.select("#esen")
 browser.fill("input[name=enit]", "hola")
 browser.click("input[name=b]")
 browser.runjs("console.log('I can run Javascript')")
-browser.runjs("console.log('I can run Jquery: ' + jQuery('a:first').attr('href'))")
-print browser.html
+browser.runjs("console.log('I can run jQuery: ' + jQuery('a:first').attr('href'))")
+print browser.url, browser.html
+browser.close()
 }}}
 
 Sometimes you'll want to see what is going on:
 
 {{{
-import spynner
-
-browser = spynner.Browser(debug_level=spynner.DEBUG)
+browser = spynner.Browser()
+browser.debug_level = spynner.DEBUG
 browser.create_webview()
 browser.show()
-browser.load("http://www.wordreference.com")
-browser.select("#esen")
-browser.fill("input[name=enit]", "hola")
-browser.click("input[name=b]")
+...
 }}}
 
-See more examples in the subversion repository: 
+See more examples in the repository: 
 
 http://code.google.com/p/spynner/source/browse/#svn/trunk/examples
 
 = Running Javascript = 
 
-Spynner uses Jquery to make Javascript interface easier. By default, two modules are injected to every loaded page:
+Spynner uses jQuery to make Javascript interface easier. By default, two modules are injected to every loaded page:
 
-  * [http://docs.jquery.com/Downloading_jQuery Jquery core]: Amongst other things, it adds the powerful Jquery [http://docs.jquery.com/Selectors selectors], which are used internally by spynner on some action methods (_fill_, _select_, _click_, _check_, ...). Of course you can also use Jquery when you run your own code in a page.
+  * [http://docs.jquery.com/Downloading_jQuery jQuery core]: Amongst other things, it adds the powerful [http://docs.jquery.com/Selectors jQuery selectors], which are used internally by some Spynner methods (_fill_, _select_, _click_, _check_, ...). Of course you can also use jQuery when you inject your own code into a page.
 
-  * [http://code.google.com/p/jqueryjs/source/browse/trunk/plugins/simulate Jquery _simulate_ plugin]: Makes it possible to simulate mouse and keyboard events (and used internally by the _click_ action). Look at the library to see which kind of events you can fire.
+  * [http://code.google.com/p/jqueryjs/source/browse/trunk/plugins/simulate jQuery _simulate_ plugin]: Makes it possible to simulate mouse and keyboard events (for now spynner uses it only in the _click_ action). Look up the library code to see which kind of events you can fire.
 
-Note that for compatibility you must use _jQuery(...)_ instead of the common shortcut _$(...)_.
+Note that you must use __jQuery(...)_ instead of _jQuery(...)_  or the common shortcut _$(...)_. That prevents name clashing with the jQuery library used by the page.
 
-= Parsing the HTML = 
+= Cook your soup: parsing the HTML = 
 
-You can parse the HTML of a webpage with your favorite library ([http://www.crummy.com/software/BeautifulSoup BeautifulSoup], [http://codespeak.net/lxml/ lxml], ...). Since we are already using Jquery for Javascript, it feels just natural to work with [http://pypi.python.org/pypi/pyquery pyquery], its Python counterpart:
+You can parse the HTML of a webpage with your favorite parsing library ([http://www.crummy.com/software/BeautifulSoup BeautifulSoup], [http://codespeak.net/lxml/ lxml], ...). Since we are already using Jquery for Javascript, it feels just natural to work with [http://pypi.python.org/pypi/pyquery pyquery], its Python counterpart:
 
 {{{
 import spynner
@@ -99,6 +100,16 @@ href = d("#somelink").attr("href")
 browser.download(href, open("/path/outputfile", "w"))
 }}}
 
+= Running Spynner without X11 ==
+
+Spynner needs a X11 server to run. If you are running it in a server without X11 you must install the virtual [http://en.wikipedia.org/wiki/Xvfb Xvfb server]. Debian users can use the small wrapper (xvfb-run). If you are not using Debian, you can download it here:
+
+http://www.mail-archive.com/debian-x@lists.debian.org/msg69632/x-run
+
+{{{
+$ xvfb-run python myscript_using_spynner.py
+}}}
+
 = Feedback =
 
-Open an [http://code.google.com/p/spynner/issues/list issue] to reports a bug or ask for a feature. You can also email me: [mailto://tokland@gmail.com tokland@gmail.com]
+Open an [http://code.google.com/p/spynner/issues/list issue] to report a bug or request a new feature. Other comments and suggestions can be directly emailed to me: [mailto://tokland@gmail.com tokland@gmail.com].
