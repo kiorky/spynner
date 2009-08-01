@@ -1,0 +1,13 @@
+#!/usr/bin/python
+import spynner
+  
+browser = spynner.Browser()
+browser.create_webview(True)
+browser.load("http://juicystudio.com/experiments/ajax/index.php")
+browser.click("#fact")
+browser.wait_reply("http://juicystudio.com/experiments/ajax/fact.php")
+print browser.runjs("_jQuery('#update').html()").toString()
+browser.click("#fact")
+browser.wait_reply("http://juicystudio.com/experiments/ajax/fact.php")
+print browser.runjs("_jQuery('#update').html()").toString()
+browser.close()
