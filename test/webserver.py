@@ -51,7 +51,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
         self.send_response(200)
-        self.send_header('Content-type', 'text/html')
+        extension = os.path.splitext(filepath)
+        if extension in ("html", "htm"):
+            self.send_header('Content-type', 'text/html')
         self.end_headers()
         sheaders = "<br />".join(request_headers)
         html = open(filepath).read().replace("$headers", sheaders)         
