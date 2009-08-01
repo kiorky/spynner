@@ -411,7 +411,7 @@ class Browser:
                       
     #{ Webview
     
-    def create_webview(self):
+    def create_webview(self, show=False):
         """Create a QWebView object and insert current QWebPage."""
         if self.webview:
             raise SpynnerError("Cannot create webview (already initialized)")
@@ -421,6 +421,8 @@ class Browser:
         window.setAttribute(Qt.WA_DeleteOnClose)
         window.connect(window, SIGNAL('destroyed(QObject *)'),
             self._on_webview_destroyed)
+        if show:
+            self.show()
 
     def destroy_webview(self):
         """Destroy current QWebView."""
