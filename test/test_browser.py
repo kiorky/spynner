@@ -88,8 +88,8 @@ class SpynnerBrowserTest(unittest.TestCase):
             self.browser.wait_load, -1.0)
 
     def test_wait_request(self):
-        self.browser.click("#link")
-        self.browser.wait_reply(get_url("/test3.html"), 1.0)
+        self.browser.click("#link", wait_requests=1)
+        self.assertEqual(get_url("/test3.html"), self.browser.url)
         
     def test_click(self):
         self.browser.click("#link")

@@ -133,8 +133,8 @@ class Browser:
             for s in ("Get", "Head", "Post", "Put"))
         
         # Webpage slots         
-        self._replies = {}
         self._load_status = None
+        self._replies = 0
         self.webpage.setForwardUnsupportedContent(True)
         self.webpage.connect(self.webpage,
             SIGNAL('unsupportedContent(QNetworkReply *)'), 
@@ -195,12 +195,11 @@ class Browser:
                 reply.abort()
             else:
                 self._debug(DEBUG, "URL not filtered: %s" % url)
-        self._replies[url] = None
         return reply
 
     def _on_reply(self, reply):
+        self._replies += 1
         url = unicode(reply.url().toString())
-        self._replies[url] = reply.error()
         if reply.error():
             self._debug(WARNING, "Reply error: %s - %d (%s)" % 
                 (url, reply.error(), reply.errorString()))
@@ -302,11 +301,14 @@ class Browser:
             if timeout and time.time() - itime > timeout:
                 raise SpynnerTimeout("Timeout reached: %d seconds" % timeout)
             self._events_loop()
+        self._events_loop(0.0)
         if self._load_status:
             jscode = "var %s = jQuery.noConflict();" % self.jslib
             self.runjs(self.javascript + jscode, debug=False)
             self.webpage.setViewportSize(self.webpage.mainFrame().contentsSize())            
-        return self._load_status
+        load_status = self._load_status
+        self._load_status = None
+        return load_status        
 
     def _debug(self, level, *args):
         if level <= self.debug_level:
@@ -360,34 +362,50 @@ class Browser:
         self.webframe.load(QUrl(url))
         return self._wait_load()
 
-    def click(self, selector, wait_load=False, wait_load_timeout=None):
+    def click(self, selector, wait_load=False, wait_requests=None, timeout=None):
         """
-        Click any clickable element (link, button, submit input).
+        Click any clickable element in page.
         
         @param selector: jQuery selector.
         @param wait_load: If True, it will wait until a new page is loaded.
-        @param wait_load_timeout: Seconds to wait for the page to load before 
+        @param timeout: Seconds to wait for the page to load before 
                                        raising an exception.
+        @param wait_requests: How many requests to wait before returning. Useful
+                              for AJAX requests.
     
-        @attention: By default this method will not wait for a page to load. 
+        By default this method will not wait for a page to load. 
         If you are clicking a link or submit button, you must call this
         method with C{wait_load=True} or, alternatively, call 
-        L{wait_load} afterwards.
-        
-        When a non-HTML file is clicked it will download it. File is
-        automatically saved on a directory structure that follows
-        the link URL (as wget --recursive does). For example, a file with URL 
+        L{wait_load} afterwards. However, the recommended way it to use 
+        L{click_link}.
+                        
+        When a non-HTML file is clicked this method will download it. The 
+        file is automatically saved keeping the original structure (as 
+        wget --recursive does). For example, a file with URL 
         I{http://server.org/dir1/dir2/file.ext} will be saved to  
         L{download_directory}/I{server.org/dir1/dir2/file.ext}.                 
         """
         jscode = "%s('%s').simulate('click')" % (self.jslib, selector)
+        self._replies = 0
         self._runjs_on_jquery("click", jscode)
+        if wait_requests:
+            while self._replies < wait_requests:
+                self._events_loop()
+            self._events_loop(0.0)
         if wait_load:
-            return self._wait_load(wait_load_timeout)
+            return self._wait_load(timeout)
 
+    def click_link(self, selector, timeout=None):
+        """Click a link and wait for page load."""
+        return self.click(selector, wait_page=True, timeout=timeout)
+
+    def click_ajax(self, selector, timeout=None):
+        """Click a AJAX link and wait for the request to finish."""
+        return self.click(selector, wait_requests=1, timeout=timeout)
+    
     def wait_load(self, timeout=None):
         """
-        Wait until a new page is loaded.
+        Wait until the page is loaded.
         
         @param timeout: Time to wait (seconds) for the page load to complete.
         @return: Boolean state
@@ -395,35 +413,15 @@ class Browser:
         """
         return self._wait_load(timeout)
 
-    def wait_reply(self, url, timeout=None):
-        """
-        Wait reply for a single request to be received.
-        
-        @param timeout: Time to wait (seconds) for the request to complete. 
-        @return: Boolean state
-        @raise SpynnerTimeout: If timeout is reached.
-        
-        AJAX requests don't reload the page, so L{wait_load} will not work. 
-        Use this method instead.
-        """
-        self._events_loop(0.0)
-        itime = time.time()
-        while self._replies.get(url) is None:
-            if timeout and time.time() - itime > timeout:
-                raise SpynnerTimeout("Timeout reached: %d seconds" % timeout)
-            self._events_loop()
-        del self._replies[url]
-        self._events_loop(0.0)
-
     def wait(self, waittime):
         """
         Wait some time.
         
         @param waittime: Time to wait (seconds).
         
-        This is an active wait, the events loop will still be run, so this
-        may be useful to wait for synchronous Javascript events and DOM
-        changes.
+        This is an active wait, the events loop will be run, so it
+        may be useful to wait for synchronous Javascript events that
+        change the DOM.
         """   
         itime = time.time()
         while time.time() - itime < waittime:
@@ -509,7 +507,7 @@ class Browser:
         jscode = "%s('%s').attr('selected', 'selected')" % (self.jslib, selector)
         self._runjs_on_jquery("select", jscode)
     
-    submit = click
+    submit = click_link
       
     #}
     
