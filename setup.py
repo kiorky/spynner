@@ -17,7 +17,7 @@
 from distutils.core import setup
 from distutils.cmd import Command
 
-version = "0.0.2"
+version = "0.0.3"
 url = "http://code.google.com/p/spynner"
 
 class gen_doc(Command):

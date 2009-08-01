@@ -1,3 +1,19 @@
+spynner (0.0.3) unstable; urgency=low
+
+  * Click does not wait for page load
+  * Use QtNetwork infrastructure to download files
+  * Expose webkit objects in Browser class
+  * Change jQuery to _jQuery
+  * HTTP authentication
+  * Callbacks for Javascript confirm and prompts
+  * Properties: url, html, soup
+  * Better docstrings (using epydoc)
+  * Implement image snapshots
+  * Implement URL filters
+  * Implement cookies setting 
+
+ --  <tokland@gmail.com>  Sat, 01 Aug 2009 18:13:37 +0200
+
 spynner (0.0.2) unstable; urgency=low
 
   * Use browser.html instead of browser.get_html

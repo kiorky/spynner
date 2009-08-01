@@ -51,11 +51,12 @@ import spynner
 
 browser = spynner.Browser()
 browser.load("http://www.wordreference.com")
+browser.runjs("console.log('I can run Javascript')")
+browser.runjs("console.log('I can run jQuery: ' + jQuery('a:first').attr('href'))")
 browser.select("#esen")
 browser.fill("input[name=enit]", "hola")
 browser.click("input[name=b]")
-browser.runjs("console.log('I can run Javascript')")
-browser.runjs("console.log('I can run jQuery: ' + jQuery('a:first').attr('href'))")
+browser.wait_page_load()
 print browser.url, browser.html
 browser.close()
 }}}
