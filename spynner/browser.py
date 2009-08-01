@@ -428,11 +428,11 @@ class Browser:
             self._events_loop()        
 
     def close(self):
-        """Close Browser instance and release resources."""
+        """Close Browser instance and release resources."""        
+        if self.webview:
+            self.destroy_webview()
         if self.webpage:
             del self.webpage
-        if self.webview:
-            del self.webview
 
     #}
                       
@@ -596,6 +596,8 @@ class Browser:
             url = unicode(reply.url().toString())
             self._download_reply_status = not bool(reply.error())
         self._download_reply_status = None
+        if not urlparse.urlsplit(url).scheme:
+            url = urlparse.urljoin(self.url, url) 
         request = QNetworkRequest(QUrl(url))
         # Create a new manager to process this download        
         manager = QNetworkAccessManager()

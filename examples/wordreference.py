@@ -2,6 +2,7 @@
 import spynner
 import pyquery
 import os
+from StringIO import StringIO
 
 def images_filter(operation, url):        
     return os.path.splitext(url)[1] not in (".jpg", ".png", ".gif")
@@ -14,12 +15,11 @@ browser.show()
 browser.load("http://www.wordreference.com")
 browser.select("#esen")
 browser.fill("input[name=enit]", "hola")
-browser.click("input[name=b]")
-browser.wait_load()
-browser.soup.make_links_absolute(base_url=browser.url)
+browser.click("input[name=b]", True)
 print "url:", browser.url
+browser.soup.make_links_absolute(base_url=browser.url)
 print "html:", browser.soup("#Otbl").html()
-data = browser.download(browser.soup("img:first").attr('src'))
-print "image length:", len(data)
-#browser.browse()
+image = StringIO()
+browser.download(browser.soup("img:first").attr('src'), outfd=image)
+print "image length:", len(image.getvalue())
 browser.close()
