@@ -112,10 +112,11 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.assertTrue(self.browser.runjs(jscode).toPyObject())
 
     def test_fill(self):
-        self.browser.fill("input[name=user]", "myname")
+        name = "myname'\"withquotes\"'"
+        self.browser.fill("input[name=user]", name)
         self.browser.click("#submit")
         self.browser.wait_page_load(timeout=1.0)
-        self.assertEqual(get_url('/test2.html?user=myname'), 
+        self.assertEqual(get_url('/test2.html?user=%s' % name), 
             self.browser.url)            
                 
     def test_runjs(self):
@@ -151,18 +152,16 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.assertTrue("hello there!" in output)        
 
     def test_download(self):
-        data = self.browser.download(get_url('/test3.html'))
-        self.assertEqual(open(get_file_path('test3.html')).read(), data)
-
-    def test_download_only_http(self):
-        self.assertRaises(spynner.SpynnerError,
-            self.browser.download, "ftp://server.com/file.tgz")
-
-    def test_stream_download(self):
         outfd = StringIO()
-        self.browser.download(get_url('/test3.html'), outfd=outfd)
+        downloaded_bytes = self.browser.download(get_url('/test3.html'), outfd)
         expected_data = open(get_file_path('test3.html')).read()
+        self.assertEqual(len(expected_data), downloaded_bytes)
         self.assertEqual(expected_data, outfd.getvalue())
+
+    def test_download_error(self):
+        outfd = StringIO()
+        downloaded_bytes = self.browser.download(get_url('/nonexisting.out'), outfd)
+        self.assertEqual(None, downloaded_bytes)
 
     def test_get_url_from_path(self):
         self.assertEqual(get_url("/test2.html"), 

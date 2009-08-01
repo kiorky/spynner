@@ -30,119 +30,14 @@ import re
 import os
 
 from PyQt4.QtCore import SIGNAL, QUrl, QEventLoop, QString, Qt, QCoreApplication
-from PyQt4.QtCore import QSize, QDateTime
-from PyQt4.QtGui import QApplication, QImage, QPainter, QRegion
+from PyQt4.QtCore import QSize, QDateTime, QVariant
+from PyQt4.QtGui import QApplication, QImage, QPainter, QRegion, QAction
 from PyQt4.QtNetwork import QNetworkCookie, QNetworkAccessManager, QNetworkReply
-from PyQt4.QtNetwork import QNetworkCookieJar
-from PyQt4.QtWebKit import QWebPage, QWebView
+from PyQt4.QtNetwork import QNetworkCookieJar, QNetworkRequest
+from PyQt4.QtWebKit import QWebPage, QWebView, QWebFrame
 
 # Debug levels
 ERROR, WARNING, INFO, DEBUG = range(4)
-
-def _first(iterable, pred=bool):
-    """Return the first element in iterator that matches the predicate"""
-    for item in iterable:
-        if pred(item):
-            return item
-
-def _debug(obj, linefeed=True, outfd=sys.stderr, outputencoding="utf8"):
-    """Print a debug info line to stream channel"""
-    if isinstance(obj, unicode):
-        obj = obj.encode(outputencoding)
-    strobj = str(obj) + ("\n" if linefeed else "")
-    outfd.write(strobj)
-    outfd.flush()
-     
-def _get_opener(mozilla_cookies=None):
-    """Return a urllib2.opener object using (optional) mozilla cookies string"""
-    if not mozilla_cookies:
-        return urllib2.build_opener()
-    cookies = cookielib.MozillaCookieJar()
-    temp_cookies = tempfile.NamedTemporaryFile()
-    temp_cookies.write(mozilla_cookies)
-    temp_cookies.flush()
-    cookies.load(temp_cookies.name)
-    return urllib2.build_opener(urllib2.HTTPCookieProcessor(cookies))
-   
-def _download(url, opener, outfd=None, bufsize=4096):
-    """
-    Download a URL using a urllib2.opener.
-    
-    Returns data read if outfd is None, total bytes downloaded otherwise."""
-    infd = opener.open(url)
-    output = []
-    while 1:
-        data = infd.read(bufsize)
-        if not data:
-            break
-        if outfd:
-            outfd.write(data)
-            output.append(len(data))
-        else: 
-            output.append(data)
-    return sum(output) if outfd else "".join(output)
-
-class SpynnerError(Exception):
-    """General Spynner error."""
-
-class SpynnerPageError(Exception):
-    """Error loading page."""
-
-class SpynnerTimeout(Exception):
-    """A timeout (usually on page load) has been reached."""
-
-class SpynnerJavascriptError(Exception):
-    """Error on the injected Javascript code.""" 
-                   
-class _ExtendedNetworkCookieJar(QNetworkCookieJar):
-    def mozillaCookies(self):
-        """
-        Return all cookies in Mozilla text format:
-        
-        # domain domain_flag path secure_connection expiration name value
-        
-        .firefox.com     TRUE   /  FALSE  946684799   MOZILLA_ID  100103        
-        """
-        header = ["# Netscape HTTP Cookie File", ""]        
-        def bool2str(value):
-            return {True: "TRUE", False: "FALSE"}[value]
-        def byte2str(value):            
-            return str(value)        
-        def get_line(cookie):
-            domain_flag = str(cookie.domain()).startswith(".")
-            return "\t".join([
-                byte2str(cookie.domain()),
-                bool2str(domain_flag),
-                byte2str(cookie.path()),
-                bool2str(cookie.isSecure()),
-                byte2str(cookie.expirationDate().toTime_t()),
-                byte2str(cookie.name()),
-                byte2str(cookie.value()),
-            ])
-        lines = [get_line(cookie) for cookie in self.allCookies() 
-          if not cookie.isSessionCookie()]
-        return "\n".join(header + lines)
-
-    def setMozillaCookies(self, string_cookies):
-        """Set all cookies from Mozilla test format string.
-        .firefox.com     TRUE   /  FALSE  946684799   MOZILLA_ID  100103        
-        """
-        def str2bool(value):
-            return {"TRUE": True, "FALSE": False}[value]
-        def get_cookie(line):
-            fields = map(str.strip, line.split("\t"))
-            if len(fields) != 7:
-                return
-            domain, domain_flag, path, is_secure, expiration, name, value = fields
-            cookie = QNetworkCookie(name, value)
-            cookie.setDomain(domain)
-            cookie.setPath(path)
-            cookie.setSecure(str2bool(is_secure))
-            cookie.setExpirationDate(QDateTime.fromTime_t(int(expiration)))
-            return cookie
-        cookies = [get_cookie(line) for line in string_cookies.splitlines() 
-          if line.strip() and not line.strip().startswith("#")]
-        self.setAllCookies(filter(bool, cookies))
 
 class Browser:
     """
@@ -163,7 +58,9 @@ class Browser:
     user_agent = None
     """@ivar: User agent for requests (see QWebPage::userAgentForUrl for details)"""
     jslib = "_jQuery"
-    """@ivar: Library name for jQuery library injected by default to pages."""    
+    """@ivar: Library name for jQuery library injected by default to pages."""
+    download_directory = "."
+    """@ivar: Directory where downloaded files will be stored."""    
     debug_stream = sys.stderr
     """@ivar: File-like stream where debug output will be written."""
     debug_level = ERROR
@@ -243,17 +140,17 @@ class Browser:
             self._on_unsupported_content)
         self.webpage.connect(self.webpage, 
             SIGNAL('loadFinished(bool)'),
-            self._on_load_status)
+            self._on_load_status)            
+        self.webpage.connect(self.webpage, 
+            SIGNAL("loadStarted()"),
+            self._on_load_started)
 
-    def _debug(self, level, *args):
-        if level <= self.debug_level:
-            kwargs = dict(outfd=self.debug_stream)
-            _debug(*args, **kwargs)
-
-    def _user_agent_for_url(self, url):
-        if self.user_agent:
-            return self.user_agent
-        return QWebPage.userAgentForUrl(self.webpage, url)
+    def _events_loop(self):
+        self.application.processEvents()
+        time.sleep(self.event_looptime)        
+                        
+    def _on_load_started(self):
+        self._debug(INFO, "Page load started")            
     
     def _on_manager_ssl_errors(self, reply, errors):
         url = unicode(reply.url().toString())
@@ -296,23 +193,46 @@ class Browser:
                 self._debug(DEBUG, "URL not filtered: %s" % url)
         return reply
 
-    def _on_unsupported_content(self, reply):
-        url = unicode(reply.url().toString())
+    def _get_filepath_for_url(self, url):
         urlinfo = urlparse.urlsplit(url)
-        if urlinfo.scheme in ("http", "https"):
-            path = urlinfo.netloc + urlinfo.path
-            if not os.path.isdir(os.path.dirname(path)):
-                os.makedirs(os.path.dirname(path))
-            self._debug("Start download: %s (%s)" % (url, path))
-            self.download(url, outfd=open(path, "wb"))
-            self._debug("Download finished: %s (%s)" % (url, path))            
+        path = os.path.join(self.download_directory,
+            urlinfo.netloc + urlinfo.path)
+        if not os.path.isdir(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+        return path
+
+    def _start_download(self, reply, outfd):
+        def _on_ready_read():
+            data = reply.readAll()
+            reply.downloaded_nbytes += len(data)
+            outfd.write(data)
+            self._debug(DEBUG, "Read from download stream (%d bytes): %s" 
+                % (len(data), url))
+        def _on_network_error():
+            self.debug(ERROR, "Network error on download: %s" % url)
+        def _on_finished():
+            self._debug(INFO, "Download finished: %s" % url)
+        url = unicode(reply.url().toString())
+        if outfd is None:
+            path = self._get_filepath_for_url(url)
+            outfd = open(path, "wb")            
+        reply.connect(reply, SIGNAL("readyRead()"), _on_ready_read)
+        reply.connect(reply, SIGNAL("NetworkError()"), _on_network_error)
+        reply.connect(reply, SIGNAL("finished()"), _on_finished)
+        self._debug(INFO, "Start download: %s" % url)
+
+    def _on_unsupported_content(self, reply, outfd=None):
+        if not reply.error():
+            self._start_download(reply, outfd)
+        else:            
+            self._debug(ERROR, "Error on unsupported content: %s" % reply.errorString())
 
     def _on_reply(self, reply):
         url = unicode(reply.url().toString())
+        self._reply_status = not bool(reply.error())
         if reply.error():
             self._debug(WARNING, "Reply error: %s - %d (%s)" % 
                 (url, reply.error(), reply.errorString()))
-            #raise SpynnerPageError("Error on reply: %s" % reply.errorString())
         else:
             self._debug(INFO, "Reply successful: %s" % url)
         for header in reply.rawHeaderList():
@@ -372,13 +292,22 @@ class Browser:
         while self._load_status is None:
             if timeout and time.time() - itime > timeout:
                 raise SpynnerTimeout("Timeout reached: %d seconds" % timeout)
-            time.sleep(self.event_looptime)
-            self.application.processEvents(QEventLoop.AllEvents)
+            self._events_loop()
         if self._load_status:
             jscode = "var %s = jQuery.noConflict();" % self.jslib
             self.runjs(self.javascript + jscode, debug=False)
             self.webpage.setViewportSize(self.webpage.mainFrame().contentsSize())            
         return self._load_status
+
+    def _debug(self, level, *args):
+        if level <= self.debug_level:
+            kwargs = dict(outfd=self.debug_stream)
+            _debug(*args, **kwargs)
+
+    def _user_agent_for_url(self, url):
+        if self.user_agent:
+            return self.user_agent
+        return QWebPage.userAgentForUrl(self.webpage, url)
 
     def _runjs_on_jquery(self, name, code):
         def _get_js_obj_length(res):
@@ -430,11 +359,17 @@ class Browser:
         @param wait_page_load: If True, it will wait until a new page is loaded.
         @param wait_page_load_timeout: Seconds to wait for the page to load before 
                                        raising an exception.
-                      
+    
         @attention: By default this method will not wait for a page to load. 
         If you are clicking a link or submit button, you must call this
         method with C{wait_page_load=True} or, alternatively, call 
         L{wait_page_load} afterwards.
+        
+        When a non-HTML file is clicked it will download it. File is
+        automatically saved on a directory structure that follows
+        the link URL (as wget --recursive does). For example, a file with URL 
+        I{http://server.org/dir1/dir2/file.ext} will be saved to  
+        L{download_directory}/I{server.org/dir1/dir2/file.ext}.                 
         """
         jscode = "%s('%s').simulate('click')" % (self.jslib, selector)
         self._runjs_on_jquery("click", jscode)
@@ -463,8 +398,7 @@ class Browser:
         """   
         itime = time.time()
         while time.time() - itime < waitime:
-            self.application.processEvents()
-            time.sleep(self.event_looptime)        
+            self._events_loop()        
 
     def close(self):
         """Close Browser instance and release resources."""
@@ -512,8 +446,7 @@ class Browser:
             raise SpynnerError("Webview is not initialized")
         self.show()
         while self.webview:
-            self.application.processEvents()
-            time.sleep(self.event_looptime)
+            self._events_loop()
 
     #}
                         
@@ -521,7 +454,8 @@ class Browser:
     
     def fill(self, selector, value):
         """Fill an input text with a string value using a jQuery selector."""
-        jscode = "%s('%s').val('%s')" % (self.jslib, selector, value)
+        escaped_value = value.replace("'", "\\'")
+        jscode = "%s('%s').val('%s')" % (self.jslib, selector, escaped_value)
         self._runjs_on_jquery("fill", jscode)
 
     def check(self, selector):
@@ -619,32 +553,36 @@ class Browser:
     
     #{ Download files
                 
-    def download(self, url, outfd=None, bufsize=4096*16, cookies=None):
+    def download(self, url, outfd=None):
         """
-        Download the given URL using the current cookies.
+        Download a given URL using current cookies.
         
         @param url: URL or path to download
-        @param outfd: Output file-like stream (if None, return data)
-        @param bufsize: Buffer size on read/write
-        @param cookies: Cookies in Mozilla format to use (if None, use current).
-        
-        @note: If url is a path, the current base url will be pre-appended for you.
-        
-        @warning: Only http/https download are supported.
-        """        
-        if cookies is None:
-            cookies = self.get_cookies()
-        if url.startswith("/"):
-            url = self.get_url_from_path(url)
-        protocol = urlparse.urlparse(url).scheme
-        if protocol not in ("http", "https"): 
-            raise SpynnerError("Only http/https downloads are supported")            
-        self._debug(INFO, "Start download: %s" % url)        
-        self._debug(DEBUG, "Using cookies: %s" % cookies)
-        return _download(url, _get_opener(cookies), outfd, bufsize)
+        @param outfd: Output file-like stream. If None, save file to disk
+                      using standard download path (see L{click}).
+        @return: Bytes downloaded (None if something went wrong)
+        @note: If url is a path, the current base URL will be pre-appended.        
+        """
+        def _on_reply(reply):
+            url = unicode(reply.url().toString())
+            self._download_reply_status = not bool(reply.error())
+        self._download_reply_status = None
+        request = QNetworkRequest(QUrl(url))
+        # Create a new manager to process this download        
+        manager = QNetworkAccessManager()
+        manager.setCookieJar(self.manager.cookieJar())
+        manager.connect(manager, SIGNAL('finished(QNetworkReply *)'), _on_reply)
+        reply = manager.get(request)
+        if reply.error():
+            raise SpynnerError("Download error: %s" % reply.errorString())
+        reply.downloaded_nbytes = 0                         
+        self._start_download(reply, outfd)
+        while self._download_reply_status is None:
+            self._events_loop()
+        return (reply.downloaded_nbytes if not reply.error() else None) 
     
     #}
-        
+            
     #{ HTML and tag soup parsing
     
     def set_html_parser(self, parser):
@@ -728,3 +666,79 @@ class Browser:
         self._url_filter = url_filter
 
     #}
+
+def _first(iterable, pred=bool):
+    """Return the first element in iterator that matches the predicate"""
+    for item in iterable:
+        if pred(item):
+            return item
+
+def _debug(obj, linefeed=True, outfd=sys.stderr, outputencoding="utf8"):
+    """Print a debug info line to stream channel"""
+    if isinstance(obj, unicode):
+        obj = obj.encode(outputencoding)
+    strobj = str(obj) + ("\n" if linefeed else "")
+    outfd.write(strobj)
+    outfd.flush()
+     
+class SpynnerError(Exception):
+    """General Spynner error."""
+
+class SpynnerPageError(Exception):
+    """Error loading page."""
+
+class SpynnerTimeout(Exception):
+    """A timeout (usually on page load) has been reached."""
+
+class SpynnerJavascriptError(Exception):
+    """Error on the injected Javascript code.""" 
+                   
+class _ExtendedNetworkCookieJar(QNetworkCookieJar):
+    def mozillaCookies(self):
+        """
+        Return all cookies in Mozilla text format:
+        
+        # domain domain_flag path secure_connection expiration name value
+        
+        .firefox.com     TRUE   /  FALSE  946684799   MOZILLA_ID  100103        
+        """
+        header = ["# Netscape HTTP Cookie File", ""]        
+        def bool2str(value):
+            return {True: "TRUE", False: "FALSE"}[value]
+        def byte2str(value):            
+            return str(value)        
+        def get_line(cookie):
+            domain_flag = str(cookie.domain()).startswith(".")
+            return "\t".join([
+                byte2str(cookie.domain()),
+                bool2str(domain_flag),
+                byte2str(cookie.path()),
+                bool2str(cookie.isSecure()),
+                byte2str(cookie.expirationDate().toTime_t()),
+                byte2str(cookie.name()),
+                byte2str(cookie.value()),
+            ])
+        lines = [get_line(cookie) for cookie in self.allCookies() 
+          if not cookie.isSessionCookie()]
+        return "\n".join(header + lines)
+
+    def setMozillaCookies(self, string_cookies):
+        """Set all cookies from Mozilla test format string.
+        .firefox.com     TRUE   /  FALSE  946684799   MOZILLA_ID  100103        
+        """
+        def str2bool(value):
+            return {"TRUE": True, "FALSE": False}[value]
+        def get_cookie(line):
+            fields = map(str.strip, line.split("\t"))
+            if len(fields) != 7:
+                return
+            domain, domain_flag, path, is_secure, expiration, name, value = fields
+            cookie = QNetworkCookie(name, value)
+            cookie.setDomain(domain)
+            cookie.setPath(path)
+            cookie.setSecure(str2bool(is_secure))
+            cookie.setExpirationDate(QDateTime.fromTime_t(int(expiration)))
+            return cookie
+        cookies = [get_cookie(line) for line in string_cookies.splitlines() 
+          if line.strip() and not line.strip().startswith("#")]
+        self.setAllCookies(filter(bool, cookies))
