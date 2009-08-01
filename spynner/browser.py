@@ -49,7 +49,7 @@ class Browser:
     >>> browser.runjs("_jQuery('div').css('border', 'solid red')") # and jQuery!
     >>> browser.select("#esen")
     >>> browser.fill("input[name=enit]", "hola")
-    >>> browser.click("input[name=b]", wait_page_load=True)
+    >>> browser.click("input[name=b]", wait_load=True)
     >>> print browser.url, len(browser.html)
     >>> browser.close()
     """
@@ -286,7 +286,7 @@ class Browser:
         self._debug(INFO, "Page load finished (%d bytes): %s (%s)" % 
             (len(self.html), self.url, status))
 
-    def _wait_page_load(self, timeout=None):
+    def _wait_load(self, timeout=None):
         self._load_status = None
         itime = time.time()
         while self._load_status is None:
@@ -349,21 +349,21 @@ class Browser:
     def load(self, url):
         """Load a web page and return status (a boolean)."""
         self.webframe.load(QUrl(url))
-        return self._wait_page_load()
+        return self._wait_load()
 
-    def click(self, selector, wait_page_load=False, wait_page_load_timeout=None):
+    def click(self, selector, wait_load=False, wait_load_timeout=None):
         """
         Click any clickable element (link, button, submit input).
         
         @param selector: jQuery selector.
-        @param wait_page_load: If True, it will wait until a new page is loaded.
-        @param wait_page_load_timeout: Seconds to wait for the page to load before 
+        @param wait_load: If True, it will wait until a new page is loaded.
+        @param wait_load_timeout: Seconds to wait for the page to load before 
                                        raising an exception.
     
         @attention: By default this method will not wait for a page to load. 
         If you are clicking a link or submit button, you must call this
-        method with C{wait_page_load=True} or, alternatively, call 
-        L{wait_page_load} afterwards.
+        method with C{wait_load=True} or, alternatively, call 
+        L{wait_load} afterwards.
         
         When a non-HTML file is clicked it will download it. File is
         automatically saved on a directory structure that follows
@@ -373,10 +373,10 @@ class Browser:
         """
         jscode = "%s('%s').simulate('click')" % (self.jslib, selector)
         self._runjs_on_jquery("click", jscode)
-        if wait_page_load:
-            return self._wait_page_load(wait_page_load_timeout)
+        if wait_load:
+            return self._wait_load(wait_load_timeout)
 
-    def wait_page_load(self, timeout=None):
+    def wait_load(self, timeout=None):
         """Wait until a new page is loaded.
         
         @param timeout: Time to wait (seconds) for load to complete before 
@@ -384,7 +384,7 @@ class Browser:
         @return: Boolean state
         @raise SpynerTimeout: When timeout is reached.
         """
-        return self._wait_page_load(timeout)
+        return self._wait_load(timeout)
 
     def wait(self, waitime):
         """

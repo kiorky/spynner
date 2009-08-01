@@ -15,7 +15,7 @@ browser.load("http://www.wordreference.com")
 browser.select("#esen")
 browser.fill("input[name=enit]", "hola")
 browser.click("input[name=b]")
-browser.wait_page_load()
+browser.wait_load()
 browser.soup.make_links_absolute(base_url=browser.url)
 print "url:", browser.url
 print "html:", browser.soup("#Otbl").html()
