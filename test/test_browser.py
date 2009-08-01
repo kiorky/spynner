@@ -83,8 +83,13 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.browser.wait_load(1000)
 
     def test_wait_load_raises_exception_on_timeout(self):
+        self.browser.click("#link")
         self.assertRaises(spynner.SpynnerTimeout, 
-            self.browser.wait_load, 0.1)
+            self.browser.wait_load, -1.0)
+
+    def test_wait_request(self):
+        self.browser.click("#link")
+        self.browser.wait_reply(get_url("/test3.html"), 1.0)
         
     def test_click(self):
         self.browser.click("#link")

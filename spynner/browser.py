@@ -84,7 +84,6 @@ class Browser:
         """        
         self.application = QApplication(qappargs or [])
         """PyQt4.QtGui.Qapplication object."""
-        #self.application = QCoreApplication(qappargs or [])
         if debug_level is not None:
             self.debug_level = debug_level
         self.webpage = QWebPage()
@@ -134,22 +133,27 @@ class Browser:
             for s in ("Get", "Head", "Post", "Put"))
         
         # Webpage slots         
+        self._replies = {}
+        self._load_status = None
         self.webpage.setForwardUnsupportedContent(True)
         self.webpage.connect(self.webpage,
             SIGNAL('unsupportedContent(QNetworkReply *)'), 
             self._on_unsupported_content)
         self.webpage.connect(self.webpage, 
             SIGNAL('loadFinished(bool)'),
-            self._on_load_status)            
+            self._on_load_finished)            
         self.webpage.connect(self.webpage, 
             SIGNAL("loadStarted()"),
             self._on_load_started)
 
-    def _events_loop(self):
+    def _events_loop(self, wait=None):
+        if wait is None:
+            wait = self.event_looptime
         self.application.processEvents()
-        time.sleep(self.event_looptime)        
+        time.sleep(wait)        
                         
     def _on_load_started(self):
+        self._load_status = None
         self._debug(INFO, "Page load started")            
     
     def _on_manager_ssl_errors(self, reply, errors):
@@ -191,45 +195,12 @@ class Browser:
                 reply.abort()
             else:
                 self._debug(DEBUG, "URL not filtered: %s" % url)
+        self._replies[url] = None
         return reply
-
-    def _get_filepath_for_url(self, url):
-        urlinfo = urlparse.urlsplit(url)
-        path = os.path.join(self.download_directory,
-            urlinfo.netloc + urlinfo.path)
-        if not os.path.isdir(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path))
-        return path
-
-    def _start_download(self, reply, outfd):
-        def _on_ready_read():
-            data = reply.readAll()
-            reply.downloaded_nbytes += len(data)
-            outfd.write(data)
-            self._debug(DEBUG, "Read from download stream (%d bytes): %s" 
-                % (len(data), url))
-        def _on_network_error():
-            self.debug(ERROR, "Network error on download: %s" % url)
-        def _on_finished():
-            self._debug(INFO, "Download finished: %s" % url)
-        url = unicode(reply.url().toString())
-        if outfd is None:
-            path = self._get_filepath_for_url(url)
-            outfd = open(path, "wb")            
-        reply.connect(reply, SIGNAL("readyRead()"), _on_ready_read)
-        reply.connect(reply, SIGNAL("NetworkError()"), _on_network_error)
-        reply.connect(reply, SIGNAL("finished()"), _on_finished)
-        self._debug(INFO, "Start download: %s" % url)
-
-    def _on_unsupported_content(self, reply, outfd=None):
-        if not reply.error():
-            self._start_download(reply, outfd)
-        else:            
-            self._debug(ERROR, "Error on unsupported content: %s" % reply.errorString())
 
     def _on_reply(self, reply):
         url = unicode(reply.url().toString())
-        self._reply_status = not bool(reply.error())
+        self._replies[url] = reply.error()
         if reply.error():
             self._debug(WARNING, "Reply error: %s - %d (%s)" % 
                 (url, reply.error(), reply.errorString()))
@@ -237,6 +208,12 @@ class Browser:
             self._debug(INFO, "Reply successful: %s" % url)
         for header in reply.rawHeaderList():
             self._debug(DEBUG, "  %s: %s" % (header, reply.rawHeader(header)))
+
+    def _on_unsupported_content(self, reply, outfd=None):
+        if not reply.error():
+            self._start_download(reply, outfd)
+        else:            
+            self._debug(ERROR, "Error on unsupported content: %s" % reply.errorString())
                              
     def _javascript_alert(self, webframe, message):
         self._debug(INFO, "Javascript alert: %s" % message)
@@ -280,14 +257,46 @@ class Browser:
     def _on_webview_destroyed(self, window):
         self.webview = None
                                              
-    def _on_load_status(self, successful):        
+    def _on_load_finished(self, successful):        
         self._load_status = successful  
         status = {True: "successful", False: "error"}[successful]
         self._debug(INFO, "Page load finished (%d bytes): %s (%s)" % 
             (len(self.html), self.url, status))
 
+    def _get_filepath_for_url(self, url):
+        urlinfo = urlparse.urlsplit(url)
+        path = os.path.join(self.download_directory,
+            urlinfo.netloc + urlinfo.path)
+        if not os.path.isdir(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+        return path
+
+    def _start_download(self, reply, outfd):
+        def _on_ready_read():
+            data = reply.readAll()
+            reply.downloaded_nbytes += len(data)
+            outfd.write(data)
+            self._debug(DEBUG, "Read from download stream (%d bytes): %s" 
+                % (len(data), url))
+        def _on_network_error():
+            self.debug(ERROR, "Network error on download: %s" % url)
+        def _on_finished():
+            self._debug(INFO, "Download finished: %s" % url)
+        url = unicode(reply.url().toString())
+        if outfd is None:
+            path = self._get_filepath_for_url(url)
+            outfd = open(path, "wb")            
+        reply.connect(reply, SIGNAL("readyRead()"), _on_ready_read)
+        reply.connect(reply, SIGNAL("NetworkError()"), _on_network_error)
+        reply.connect(reply, SIGNAL("finished()"), _on_finished)
+        self._debug(INFO, "Start download: %s" % url)
+
     def _wait_load(self, timeout=None):
-        self._load_status = None
+        self._events_loop(0.0)
+        if self._load_status is not None:
+            load_status = self._load_status
+            self._load_status = None
+            return load_status        
         itime = time.time()
         while self._load_status is None:
             if timeout and time.time() - itime > timeout:
@@ -377,27 +386,47 @@ class Browser:
             return self._wait_load(wait_load_timeout)
 
     def wait_load(self, timeout=None):
-        """Wait until a new page is loaded.
+        """
+        Wait until a new page is loaded.
         
-        @param timeout: Time to wait (seconds) for load to complete before 
-                        raising an exception
+        @param timeout: Time to wait (seconds) for the page load to complete.
         @return: Boolean state
-        @raise SpynerTimeout: When timeout is reached.
+        @raise SpynnerTimeout: If timeout is reached.
         """
         return self._wait_load(timeout)
 
-    def wait(self, waitime):
+    def wait_reply(self, url, timeout=None):
+        """
+        Wait reply for a single request to be received.
+        
+        @param timeout: Time to wait (seconds) for the request to complete. 
+        @return: Boolean state
+        @raise SpynnerTimeout: If timeout is reached.
+        
+        AJAX requests don't reload the page, so L{wait_load} will not work. 
+        Use this method instead.
+        """
+        self._events_loop(0.0)
+        itime = time.time()
+        while self._replies.get(url) is None:
+            if timeout and time.time() - itime > timeout:
+                raise SpynnerTimeout("Timeout reached: %d seconds" % timeout)
+            self._events_loop()
+        del self._replies[url]
+        self._events_loop(0.0)
+
+    def wait(self, waittime):
         """
         Wait some time.
         
-        @param waitime: Time to wait (seconds).
+        @param waittime: Time to wait (seconds).
         
         This is an active wait, the events loop will still be run, so this
         may be useful to wait for synchronous Javascript events and DOM
         changes.
         """   
         itime = time.time()
-        while time.time() - itime < waitime:
+        while time.time() - itime < waittime:
             self._events_loop()        
 
     def close(self):
@@ -610,8 +639,7 @@ class Browser:
         """
         Set HTTP authentication request callback.
         
-        Set the callback that will called when a page asks for HTTP
-        authentication. The callback must have this signature: 
+        The callback must have this signature: 
         
         C{http_authentication_callback(url, realm)}: 
                         
@@ -619,7 +647,7 @@ class Browser:
             - C{realm}: Realm requiring authentication.
             
         The callback should return a pair of string containing (user, password) 
-        or False/None if you don't to answer.
+        or None if you don't want to answer.
         """
         self._http_authentication_callback = callback
     
@@ -638,7 +666,8 @@ class Browser:
         
         Typical usage:
         
-        >>> browser.snapshot().save("output.png") 
+        >>> browser.load(url)
+        >>> browser.snapshot().save("webpage.png") 
         """
         if box:
             x1, y1, x2, y2 = box        
