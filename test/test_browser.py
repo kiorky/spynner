@@ -238,6 +238,13 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.assertTrue("User-Agent: My user agent" in self.browser.html)
 
     def test_snapshot(self):
+        image = self.browser.snapshot()
+        self.assertTrue(type(image) == QImage)
+        size = self.browser.webpage.viewportSize()
+        self.assertEqual((image.width(), image.height()), 
+            (size.width(), size.height()))
+
+    def test_snapshot_with_box(self):
         image = self.browser.snapshot((100, 100, 200, 250))
         self.assertTrue(type(image) == QImage)
         self.assertEqual((image.width(), image.height()), (100, 150))

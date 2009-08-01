@@ -625,22 +625,33 @@ class Browser:
              
     #{ Miscellaneous
     
-    def snapshot(self, box, format=QImage.Format_ARGB32):
+    def snapshot(self, box=None, format=QImage.Format_ARGB32):
         """        
         Take an image snapshot of the current frame.
         
         @param box: 4-element tuple containing box to capture (x1, y1, x2, y2).
+                    If None, capture the whole page.
         @param format: QImage format (see QImage::Format_*).
         @return: A QImage image.
+        
+        Typical usage:
+        
+        >>> browser.snapshot().save("output.png") 
         """
-        x1, y1, x2, y2 = box        
-        w, h = (x2 - x1), (y2 - y1)
-        image = QImage(QSize(x2, y2), format)
-        painter = QPainter(image)
-        self.webpage.mainFrame().render(painter)
-        #self.webpage.mainFrame().render(painter, QRegion(x1, y1, w, h))        
-        painter.end()
-        return image.copy(x1, y1, w, h)
+        if box:
+            x1, y1, x2, y2 = box        
+            w, h = (x2 - x1), (y2 - y1)
+            image0 = QImage(QSize(x2, y2), format)
+            painter = QPainter(image0)
+            self.webpage.mainFrame().render(painter)
+            painter.end()
+            image = image0.copy(x1, y1, w, h)
+        else:
+            image = QImage(self.webpage.viewportSize(), format)
+            painter = QPainter(image)                        
+            self.webpage.mainFrame().render(painter)
+            painter.end()
+        return image
             
     def get_url_from_path(self, path):
         """Return the URL for a given path using the current URL as base."""
