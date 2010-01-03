@@ -120,7 +120,7 @@ class Browser:
         """PyQt4.QtNetwork.QNetworkCookieJar object."""
         self.manager.setCookieJar(self.cookiesjar)
         self.manager.connect(self.manager, 
-            SIGNAL("sslErrors (QNetworkReply *, const QList<QSslError> &)"),
+            SIGNAL("sslErrors(QNetworkReply *, const QList<QSslError> &)"),
             self._on_manager_ssl_errors)
         self.manager.connect(self.manager, 
             SIGNAL('finished(QNetworkReply *)'),
@@ -396,12 +396,12 @@ class Browser:
             return self._wait_load(timeout)
 
     def click_link(self, selector, timeout=None):
-        """Click a link and wait for page load."""
-        return self.click(selector, wait_page=True, timeout=timeout)
+        """Click a link and wait for the page to load."""
+        return self.click(selector, wait_load=True, timeout=timeout)
 
-    def click_ajax(self, selector, timeout=None):
+    def click_ajax(self, selector, wait_requests=1, timeout=None):
         """Click a AJAX link and wait for the request to finish."""
-        return self.click(selector, wait_requests=1, timeout=timeout)
+        return self.click(selector, wait_requests=wait_requests, timeout=timeout)
     
     def wait_load(self, timeout=None):
         """
