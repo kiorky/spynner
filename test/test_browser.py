@@ -221,20 +221,21 @@ class SpynnerBrowserTest(unittest.TestCase):
         self.assertTrue(self.browser.html_contains("func.ion [Ss]etCookie"))
         self.assertFalse(self.browser.html_contains("strange string"))                    
 
-    def test_http_authentication(self):
+    def test_http_authentication_error(self):
         def not_auth_callback(url, realm):
             return False
         self.browser.set_http_authentication_callback(not_auth_callback)
         self.browser.click("#link_protected")
         self.browser.wait_load(timeout=1.0)
-        self.assertNotEqual(get_url("/protected.html"), self.browser.url)
-        
+        self.assertFalse("Protected" in self.browser.html)
+
+    def test_http_authentication_successful(self):
         def auth_callback(url, realm):
             return ("myuser", "mypassword")
         self.browser.set_http_authentication_callback(auth_callback)
         self.browser.click("#link_protected")
         self.browser.wait_load(timeout=1.0)
-        self.assertEqual(get_url("/protected.html"), self.browser.url)
+        self.assertTrue("Protected" in self.browser.html)
 
     def test_user_agent(self):
         self.browser.user_agent = "My user agent"
