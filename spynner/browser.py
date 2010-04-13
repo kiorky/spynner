@@ -321,18 +321,9 @@ class Browser:
         return QWebPage.userAgentForUrl(self.webpage, url)
 
     def _runjs_on_jquery(self, name, code):
-        def _get_js_obj_length(res):
-            if res.type() != res.Map:
-                return False
-            resmap = res.toMap()
-            lenfield = QString(u'length')
-            if lenfield not in resmap:
-                return False
-            return resmap[lenfield].toInt()[0]
-        res = self.runjs(code)
-        length = _get_js_obj_length(res)
-        #if not length or length < 1:
-        #    raise SpynnerJavascriptError("error on %s: %s" % (name, code))
+        code2 = "result = %s; result.length" % code
+        if self.runjs(code2).toInt() < 1:
+            raise SpynnerJavascriptError("error on %s: %s" % (name, code))
 
     def _get_html(self):
         return unicode(self.webframe.toHtml())
