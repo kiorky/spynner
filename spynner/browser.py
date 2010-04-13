@@ -188,14 +188,14 @@ class Browser:
         self._debug(INFO, "Request: %s %s" % (operation_name, url))
         for h in request.rawHeaderList():
             self._debug(DEBUG, "  %s: %s" % (h, request.rawHeader(h)))
-        reply = QNetworkAccessManager.createRequest(self.manager, 
-            operation, request, data)        
         if self._url_filter:
-            if not self._url_filter(self._operation_names[operation], url):
+            if self._url_filter(self._operation_names[operation], url) is False:
                 self._debug(INFO, "URL filtered: %s" % url)
-                reply.abort()
+                request.setUrl(QUrl("about:blank"))
             else:
                 self._debug(DEBUG, "URL not filtered: %s" % url)
+        reply = QNetworkAccessManager.createRequest(self.manager, 
+            operation, request, data)        
         return reply
 
     def _on_reply(self, reply):
