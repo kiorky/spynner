@@ -521,8 +521,7 @@ class Browser:
         """
         if debug:
             self._debug(DEBUG, "Run Javascript code: %s" % jscode)
-        # 1+1 is a hack until we discover why this only works every 2 calls
-        return self.webpage.mainFrame().evaluateJavaScript(jscode+ ";1+1;")
+        return self.webpage.mainFrame().evaluateJavaScript(jscode)
 
     def set_javascript_confirm_callback(self, callback):
         """
