@@ -28,6 +28,7 @@ import time
 import sys
 import re
 import os
+from StringIO import StringIO
 
 from PyQt4.QtCore import SIGNAL, QUrl, QEventLoop, QString, Qt, QCoreApplication
 from PyQt4.QtCore import QSize, QDateTime, QVariant
@@ -579,8 +580,7 @@ class Browser:
         Download a given URL using current cookies.
         
         @param url: URL or path to download
-        @param outfd: Output file-like stream. If None, save file to disk
-                      using standard download path (see L{click}).
+        @param outfd: Output file-like stream. If None, return data string.
         @return: Bytes downloaded (None if something went wrong)
         @note: If url is a path, the current base URL will be pre-appended.        
         """
@@ -599,10 +599,16 @@ class Browser:
         reply.downloaded_nbytes = 0
         manager.setCookieJar(self.manager.cookieJar())
         manager.connect(manager, SIGNAL('finished(QNetworkReply *)'), _on_reply)
+        outfd_set = bool(outfd)
+        if not outfd_set:
+            outfd = StringIO()            
         self._start_download(reply, outfd)
         while self._download_reply_status is None:
             self._events_loop()
-        return (reply.downloaded_nbytes if not reply.error() else None) 
+        if outfd_set:
+            return (reply.downloaded_nbytes if not reply.error() else None)
+        else:
+            return outfd.getvalue()  
     
     #}
             

@@ -4,22 +4,22 @@ import pyquery
 import os
 from StringIO import StringIO
 
-def images_filter(operation, url):        
-    return os.path.splitext(url)[1] not in (".jpg", ".png", ".gif")
-  
 browser = spynner.Browser(debug_level=spynner.INFO)
-browser.set_html_parser(pyquery.PyQuery)
-browser.set_url_filter(images_filter)
 browser.create_webview()
 browser.show()
+browser.set_html_parser(pyquery.PyQuery)
 browser.load("http://www.wordreference.com")
 browser.select("#esen")
 browser.fill("input[name=enit]", "hola")
-browser.click("input[name=b]", True)
+browser.click("input[name=b]")
+browser.wait_load()
 print "url:", browser.url
+
+# Soup is a PyQuery object
 browser.soup.make_links_absolute(base_url=browser.url)
 print "html:", browser.soup("#Otbl").html()
-image = StringIO()
-browser.download(browser.soup("img:first").attr('src'), outfd=image)
-print "image length:", len(image.getvalue())
+
+# Demonstrate how to download a resource using PyQuery soup
+imagedata = browser.download(browser.soup("img:first").attr('src'))
+print "image length:", len(imagedata)
 browser.close()
