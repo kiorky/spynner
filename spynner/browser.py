@@ -15,8 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this software.  If not, see <http://www.gnu.org/licenses/>
 """
-Spynner is a stateful programmatic web browser module for Python with 
-Javascript/AJAX support based upon the QtWebKit framework.   
+Spynner is a stateful programmatic web-browser module for Python with 
+Javascript/AJAX support. It is build upon the PyQtWebKit framework.   
 """
 
 import itertools
@@ -81,7 +81,7 @@ class Browser:
         
         @param qappargs: Arguments for QApplication constructor.
         @param debug_level: Debug level logging (L{ERROR} by default)
-        """        
+        """ 
         self.application = QApplication(qappargs or [])
         """PyQt4.QtGui.Qapplication object."""
         if debug_level is not None:
@@ -330,8 +330,9 @@ class Browser:
                 return False
             return resmap[lenfield].toInt()[0]
         res = self.runjs(code)
-        if _get_js_obj_length(res) < 1:
-            raise SpynnerJavascriptError("error on %s: %s" % (name, code))
+        length = _get_js_obj_length(res)
+        #if not length or length < 1:
+        #    raise SpynnerJavascriptError("error on %s: %s" % (name, code))
 
     def _get_html(self):
         return unicode(self.webframe.toHtml())
@@ -529,7 +530,8 @@ class Browser:
         """
         if debug:
             self._debug(DEBUG, "Run Javascript code: %s" % jscode)
-        return self.webpage.mainFrame().evaluateJavaScript(jscode)
+        # 1+1 is a hack until we discover why this only works every 2 calls
+        return self.webpage.mainFrame().evaluateJavaScript(jscode+ ";1+1;")
 
     def set_javascript_confirm_callback(self, callback):
         """
@@ -544,7 +546,7 @@ class Browser:
             - url: Url where the popup was launched.        
             - param message: String message.
         
-        The callback should return a boolean (True means 'yes', False means 'no')
+        The callback should return a boolean (True meaning 'yes', False meaning 'no')
         """
         self._javascript_confirm_callback = callback
 
@@ -575,7 +577,7 @@ class Browser:
         return self.cookiesjar.mozillaCookies()
 
     def set_cookies(self, string_cookies):
-        """Set cookies from Mozilla format string.""" 
+        """Set cookies from a string with Mozilla-format cookies.""" 
         return self.cookiesjar.setMozillaCookies(string_cookies)
 
     #}
@@ -601,12 +603,12 @@ class Browser:
         request = QNetworkRequest(QUrl(url))
         # Create a new manager to process this download        
         manager = QNetworkAccessManager()
-        manager.setCookieJar(self.manager.cookieJar())
-        manager.connect(manager, SIGNAL('finished(QNetworkReply *)'), _on_reply)
         reply = manager.get(request)
         if reply.error():
             raise SpynnerError("Download error: %s" % reply.errorString())
-        reply.downloaded_nbytes = 0                         
+        reply.downloaded_nbytes = 0
+        manager.setCookieJar(self.manager.cookieJar())
+        manager.connect(manager, SIGNAL('finished(QNetworkReply *)'), _on_reply)
         self._start_download(reply, outfd)
         while self._download_reply_status is None:
             self._events_loop()
