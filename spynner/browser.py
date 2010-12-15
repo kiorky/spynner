@@ -58,7 +58,7 @@ class Browser:
     """@ivar: If True, ignore SSL certificate errors."""
     user_agent = None
     """@ivar: User agent for requests (see QWebPage::userAgentForUrl for details)"""
-    jslib = "_jQuery"
+    jslib = "jq"
     """@ivar: Library name for jQuery library injected by default to pages."""
     download_directory = "."
     """@ivar: Directory where downloaded files will be stored."""    
@@ -200,12 +200,12 @@ class Browser:
 
     def _on_reply(self, reply):
         self._replies += 1
-        url = unicode(reply.url().toString())
+        self._reply_url = unicode(reply.url().toString())
         if reply.error():
             self._debug(WARNING, "Reply error: %s - %d (%s)" % 
-                (url, reply.error(), reply.errorString()))
+                (self._reply_url, reply.error(), reply.errorString()))
         else:
-            self._debug(INFO, "Reply successful: %s" % url)
+            self._debug(INFO, "Reply successful: %s" % self._reply_url)
         for header in reply.rawHeaderList():
             self._debug(DEBUG, "  %s: %s" % (header, reply.rawHeader(header)))
 
@@ -321,9 +321,22 @@ class Browser:
             return self.user_agent
         return QWebPage.userAgentForUrl(self.webpage, url)
 
+    def get_js_obj_length(self, res):
+        if res.type() != res.Map:
+            return False
+        resmap = res.toMap()
+        lenfield = QString(u'length')
+        if lenfield not in resmap:
+            return False
+        return resmap[lenfield].toInt()[0]
+    
+    def jslen(self, selector):
+        res = self.runjs("%s('%s')" % (self.jslib, selector))
+        return self._get_js_obj_length(res)
+    
     def _runjs_on_jquery(self, name, code):
-        code2 = "result = %s; result.length" % code
-        if self.runjs(code2).toInt() < 1:
+        res = self.runjs(code)
+        if self._get_js_obj_length(res) < 1:
             raise SpynnerJavascriptError("error on %s: %s" % (name, code))
 
     def _get_html(self):
@@ -355,6 +368,24 @@ class Browser:
         self.webframe.load(QUrl(url))
         return self._wait_load()
 
+    def wait_requests(self, wait_requests = None, url = None, url_regex = None):
+        if wait_requests:
+            while self._replies < wait_requests:
+                self._events_loop()
+            self._events_loop(0.0)
+        if url_regex or url:
+            last_replies = self._replies
+            while True:
+                if last_replies != self._replies:
+                    if url_regex:
+                        if re.search(url_regex, self._reply_url):
+                            break
+                    elif url:
+                        if url == self._reply_url:
+                            break
+                self._events_loop()
+            self._events_loop(0.0)
+    
     def click(self, selector, wait_load=False, wait_requests=None, timeout=None):
         """
         Click any clickable element in page.
@@ -381,10 +412,7 @@ class Browser:
         jscode = "%s('%s').simulate('click')" % (self.jslib, selector)
         self._replies = 0
         self._runjs_on_jquery("click", jscode)
-        if wait_requests:
-            while self._replies < wait_requests:
-                self._events_loop()
-            self._events_loop(0.0)
+        self.wait_requests(wait_requests)
         if wait_load:
             return self._wait_load(timeout)
 
@@ -522,7 +550,10 @@ class Browser:
         """
         if debug:
             self._debug(DEBUG, "Run Javascript code: %s" % jscode)
-        return self.webpage.mainFrame().evaluateJavaScript(jscode)
+        r = self.webpage.mainFrame().evaluateJavaScript(jscode)
+        if r.isValid() == False:
+            r = self.webpage.mainFrame().evaluateJavaScript(jscode)
+        return r
 
     def set_javascript_confirm_callback(self, callback):
         """
