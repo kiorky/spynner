@@ -332,11 +332,11 @@ class Browser:
     
     def jslen(self, selector):
         res = self.runjs("%s('%s')" % (self.jslib, selector))
-        return self._get_js_obj_length(res)
+        return self.get_js_obj_length(res)
     
     def _runjs_on_jquery(self, name, code):
         res = self.runjs(code)
-        if self._get_js_obj_length(res) < 1:
+        if self.get_js_obj_length(res) < 1:
             raise SpynnerJavascriptError("error on %s: %s" % (name, code))
 
     def _get_html(self):
