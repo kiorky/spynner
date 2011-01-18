@@ -543,10 +543,12 @@ class Browser:
         jscode = "%s('%s').attr('checked', false)" % (self.jslib, selector)
         self._runjs_on_jquery("uncheck", jscode)
 
-    def choose(self, selector):        
+    def choose(self, selector, value):
         """Choose a radio input using a jQuery selector."""
-        jscode = "%s('%s').simulate('click')" % (self.jslib, selector)
+        escaped_value = value.replace("'", "\\'")
+        jscode = "%s('%s').filter('[value=%s]').simulate('click')" % (self.jslib, selector, escaped_value)
         self._runjs_on_jquery("choose", jscode)
+
 
     def select(self, selector):        
         """Choose a option in a select using a jQuery selector."""
