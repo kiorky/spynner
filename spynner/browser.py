@@ -368,6 +368,11 @@ class Browser:
         self.webframe.load(QUrl(url))
         return self._wait_load()
 
+    def load_request(self, req):
+        """Load a network request and return status (a boolean)."""
+        self.webframe.load(req)
+        return self._wait_load()
+
     def wait_requests(self, wait_requests = None, url = None, url_regex = None):
         if wait_requests:
             while self._replies < wait_requests:
@@ -501,6 +506,7 @@ class Browser:
     #}
 
     #{ Webframe
+
     def set_webframe_to_default(self):
         self.webframe = self.webpage.mainFrame()
 
@@ -515,6 +521,7 @@ class Browser:
 	"""Inject jquery into frame"""
         jscode = "var %s = jQuery.noConflict();" % self.jslib
         self.runjs(self.javascript + jscode, debug=False)
+
     #}
                         
     #{ Form manipulation
