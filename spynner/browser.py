@@ -789,8 +789,7 @@ class _ExtendedNetworkCookieJar(QNetworkCookieJar):
                 byte2str(cookie.name()),
                 byte2str(cookie.value()),
             ])
-        lines = [get_line(cookie) for cookie in self.allCookies() 
-          if not cookie.isSessionCookie()]
+        lines = [get_line(cookie) for cookie in self.allCookies()]
         return "\n".join(header + lines)
 
     def setMozillaCookies(self, string_cookies):
