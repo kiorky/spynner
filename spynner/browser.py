@@ -499,6 +499,23 @@ class Browser:
             self._events_loop()
 
     #}
+
+    #{ Webframe
+    def set_webframe_to_default(self):
+        self.webframe = self.webpage.mainFrame()
+
+    def set_webframe(self, framenumber):
+        cf = self.webframe.childFrames()
+	
+        try:
+           self.webframe = cf[int(framenumber)]
+        except:
+            raise SpynnerError("childframe does not exist")
+		
+	"""Inject jquery into frame"""
+        jscode = "var %s = jQuery.noConflict();" % self.jslib
+        self.runjs(self.javascript + jscode, debug=False)
+    #}
                         
     #{ Form manipulation
     
@@ -550,10 +567,7 @@ class Browser:
         """
         if debug:
             self._debug(DEBUG, "Run Javascript code: %s" % jscode)
-        r = self.webpage.mainFrame().evaluateJavaScript(jscode)
-        if r.isValid() == False:
-            r = self.webpage.mainFrame().evaluateJavaScript(jscode)
-        return r
+        return self.webframe.evaluateJavaScript(jscode)
 
     def set_javascript_confirm_callback(self, callback):
         """
