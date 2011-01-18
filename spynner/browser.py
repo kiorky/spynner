@@ -603,6 +603,43 @@ class Browser:
         return self.cookiesjar.setMozillaCookies(string_cookies)
 
     #}
+
+    #{ Proxies
+
+    def get_proxy(self):
+        """Return string containing the current proxy."""
+        return self.manager.proxy()
+
+    def set_proxy(self, string_proxy):
+        """Set proxy [http|socks5]://username:password@hostname:port"""
+        urlinfo = urlparse.urlparse(string_proxy)
+
+        proxy = QNetworkProxy()
+        if urlinfo.scheme == 'socks5' :
+                proxy.setType(1)
+        elif urlinfo.scheme == 'http' :
+                proxy.setType(3)
+        else : 
+                proxy.setType(2)
+                self.manager.setProxy(proxy)
+                return self.manager.proxy()
+
+        proxy.setHostName(urlinfo.hostname)
+        proxy.setPort(urlinfo.port)
+        if urlinfo.username != None :
+                proxy.setUser(urlinfo.username)
+        else :
+                proxy.setUser('')
+
+        if urlinfo.password != None :
+                proxy.setPassword(urlinfo.password)
+        else :
+                proxy.setPassword('')
+
+        self.manager.setProxy(proxy)
+        return self.manager.proxy()
+      
+    #}
     
     #{ Download files
                 
