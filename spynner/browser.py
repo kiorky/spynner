@@ -204,6 +204,8 @@ class Browser:
     def _on_reply(self, reply):
         self._replies += 1
         self._reply_url = unicode(reply.url().toString())
+        self._reply_status = not bool(reply.error())
+
         if reply.error():
             self._debug(WARNING, "Reply error: %s - %d (%s)" % 
                 (self._reply_url, reply.error(), reply.errorString()))
