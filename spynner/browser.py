@@ -69,6 +69,9 @@ class Browser:
     event_looptime = 0.01
     """@ivar: Event loop dispatcher loop delay (seconds)."""
     
+    errorCode = None
+    errorMessage = None
+
     _javascript_files = ["jquery.min.js", "jquery.simulate.js"]
 
     _javascript_directories = [
@@ -204,6 +207,8 @@ class Browser:
         if reply.error():
             self._debug(WARNING, "Reply error: %s - %d (%s)" % 
                 (self._reply_url, reply.error(), reply.errorString()))
+            self.errorCode = reply.error()
+            self.errorMessage = reply.errorString()
         else:
             self._debug(INFO, "Reply successful: %s" % self._reply_url)
         for header in reply.rawHeaderList():
