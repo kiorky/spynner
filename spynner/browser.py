@@ -577,14 +577,23 @@ class Browser:
         
         You can call Jquery even if the original page does not include it 
         as Spynner injects the library for every loaded page. You must 
-        use C{_jQuery(...)} instead of of C{jQuery} or the common {$(...)} 
+        use C{jq(...)} instead of of C{jQuery} or the common {$(...)} 
         shortcut. 
         
-        @note: You can change the _jQuery alias (see L{jslib}).        
+        @note: You can change the jq alias (see L{jslib}).        
         """
         if debug:
             self._debug(DEBUG, "Run Javascript code: %s" % jscode)
-        return self.webframe.evaluateJavaScript(jscode)
+
+        #XXX evaluating JS twice must be wrong but finding the bug is proving tricky...
+        #JavaScriptCore/interpreter/Interpreter.cpp and JavaScriptCore/runtime/Completion.cpp
+        #JavaScriptCore/runtime/Completion.cpp is catching an exception (sometimes) and 
+        #returning "TypeError: Type error" - BUT it looks like the JS does complete after
+        #the function has already returned
+        r = self.webframe.evaluateJavaScript(jscode)
+        if r.isValid() == False:
+            r = self.webframe.evaluateJavaScript(jscode)
+        return r
 
     def set_javascript_confirm_callback(self, callback):
         """
