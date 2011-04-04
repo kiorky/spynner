@@ -701,11 +701,15 @@ class Browser:
         request = QNetworkRequest(QUrl(url))
         # Create a new manager to process this download        
         manager = QNetworkAccessManager()
+        # create a copy of the cookies jar to prevent
+        # CJ to be garbage collected
+        cj = _ExtendedNetworkCookieJar()
+        cj.setAllCookies(self.cookiesjar.allCookies())
+        manager.setCookieJar(cj)
         reply = manager.get(request)
         if reply.error():
             raise SpynnerError("Download error: %s" % reply.errorString())
         reply.downloaded_nbytes = 0
-        manager.setCookieJar(self.manager.cookieJar())
         manager.connect(manager, SIGNAL('finished(QNetworkReply *)'), _on_reply)
         outfd_set = bool(outfd)
         if not outfd_set:
@@ -717,7 +721,7 @@ class Browser:
             return (reply.downloaded_nbytes if not reply.error() else None)
         else:
             return outfd.getvalue()  
-    
+
     #}
             
     #{ HTML and tag soup parsing

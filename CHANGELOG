@@ -1,3 +1,7 @@
+spynner (0.0.4) unstable; urgency=low
+ 
+  * fix download cookiesjar free problem 
+
 spynner (0.0.3) unstable; urgency=low
 
   * Click does not wait for page load
