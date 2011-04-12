@@ -1,37 +1,43 @@
-spynner (0.0.4) unstable; urgency=low
- 
-  * fix download cookiesjar free problem 
+0.0.4 (unreleased)
+-------------------
+* Fix download cookiesjar free problem [kiorky <kiorky@cryptelium.net>]
+* Allow download to be tracked for further reuse [kiorky <kiorky@cryptelium.net>]
+* Generate filenames by looking for their filename in response objects. [kiorky <kiorky@cryptelium.net>]
+* Add api methods to:
+        - send raw keyboard keys
+        - send qt raw mouse clicks
+        - use qtwebkit native JS click element
+        - some helpers to wait for content
+* Add download files tracker
 
-spynner (0.0.3) unstable; urgency=low
+0.0.3 (2009-08-01)
+------------------
+* Click does not wait for page load
+* Use QtNetwork infrastructure to download files
+* Expose webkit objects in Browser class
+* Change jQuery to _jQuery
+* HTTP authentication
+* Callbacks for Javascript confirm and prompts
+* Properties: url, html, soup
+* Better docstrings (using epydoc)
+* Implement image snapshots
+* Implement URL filters
+* Implement cookies setting
+  [<tokland@gmail.com]
 
-  * Click does not wait for page load
-  * Use QtNetwork infrastructure to download files
-  * Expose webkit objects in Browser class
-  * Change jQuery to _jQuery
-  * HTTP authentication
-  * Callbacks for Javascript confirm and prompts
-  * Properties: url, html, soup
-  * Better docstrings (using epydoc)
-  * Implement image snapshots
-  * Implement URL filters
-  * Implement cookies setting 
 
- --  <tokland@gmail.com>  Sat, 01 Aug 2009 18:13:37 +0200
+0.0.2 (2009-07-27)
+---------------------
+* Use browser.html instead of browser.get_html
+* Fix setup.py to make it compatible with Win32
+* Add a URL filter mechanism (with a callback)
+* Use class-methods instead of burdening Browser.__init__
+* Instance variable to ignore SSL certificate errors
+* Start using epydoc format for API documentation
+* Add create_webview/destroy_webview for GUI debugging
+  [<tokland@gmail.com]
 
-spynner (0.0.2) unstable; urgency=low
+0.0.1 (2009-07-25)
+--------------------
+* Initial release.  [<tokland@gmail.com]
 
-  * Use browser.html instead of browser.get_html
-  * Fix setup.py to make it compatible with Win32
-  * Add a URL filter mechanism (with a callback)
-  * Use class-methods instead of burdening Browser.__init__ 
-  * Instance variable to ignore SSL certificate errors
-  * Start using epydoc format for API documentation
-  * Add create_webview/destroy_webview for GUI debugging
-
- --  <tokland@gmail.com>  Mon, 27 Jul 2009 20:35:21 +0200
-
-spynner (0.0.1) unstable; urgency=low
-
-  * Initial release.
-
- --  <tokland@gmail.com>  Sat, 25 Jul 2009 19:59:08 +0200

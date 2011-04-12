@@ -15,8 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this software.  If not, see <http://www.gnu.org/licenses/>
 """
-Spynner is a stateful programmatic web-browser module for Python with 
-Javascript/AJAX support. It is build upon the PyQtWebKit framework.   
+Spynner is a stateful programmatic web-browser module for Python with
+Javascript/AJAX support. It is build upon the PyQtWebKit framework.
 """
 
 import itertools
@@ -30,20 +30,22 @@ import re
 import os
 from StringIO import StringIO
 
-from PyQt4.QtCore import SIGNAL, QUrl, QEventLoop, QString, Qt, QCoreApplication
-from PyQt4.QtCore import QSize, QDateTime, QVariant
-from PyQt4.QtGui import QApplication, QImage, QPainter, QRegion, QAction
-from PyQt4.QtNetwork import QNetworkCookie, QNetworkAccessManager, QNetworkReply
+
+from PyQt4.QtCore import SIGNAL, QUrl, QString, Qt, QEvent
+from PyQt4.QtCore import QSize, QDateTime, QPoint
+from PyQt4.QtGui import QApplication, QImage, QPainter
+from PyQt4.QtGui import QCursor, QMouseEvent, QKeyEvent
+from PyQt4.QtNetwork import QNetworkCookie, QNetworkAccessManager
 from PyQt4.QtNetwork import QNetworkCookieJar, QNetworkRequest, QNetworkProxy
-from PyQt4.QtWebKit import QWebPage, QWebView, QWebFrame
+from PyQt4.QtWebKit import QWebPage, QWebView
 
 # Debug levels
 ERROR, WARNING, INFO, DEBUG = range(4)
 
-class Browser:
+class Browser(object):
     """
-    Stateful programmatic web browser class based upon QtWebKit.   
-    
+    Stateful programmatic web browser class based upon QtWebKit.
+
     >>> browser = Browser()
     >>> browser.load("http://www.wordreference.com")
     >>> browser.runjs("console.log('I can run Javascript!')")
@@ -61,33 +63,54 @@ class Browser:
     jslib = "jq"
     """@ivar: Library name for jQuery library injected by default to pages."""
     download_directory = "."
-    """@ivar: Directory where downloaded files will be stored."""    
+    """@ivar: Directory where downloaded files will be stored."""
+    files = []
+    """@ivar: Track files download key is the path, each entry is in the form {'reply': replyobj, 'req': reqobj}"""
     debug_stream = sys.stderr
     """@ivar: File-like stream where debug output will be written."""
     debug_level = ERROR
-    """@ivar: Debug verbose level (L{ERROR}, L{WARNING}, L{INFO} or L{DEBUG})."""    
+    """@ivar: Debug verbose level (L{ERROR}, L{WARNING}, L{INFO} or L{DEBUG})."""
     event_looptime = 0.01
     """@ivar: Event loop dispatcher loop delay (seconds)."""
-    
+    want_compat = True
+    """@ivar: IF True: Use jQuery.noConflict, else just use '$'"""
+
+    _jquery = 'jquery-1.5.2.js'
+    _jquery_simulate = 'jquery.simulate.js'
+
     errorCode = None
     errorMessage = None
-
-    _javascript_files = ["jquery.min.js", "jquery.simulate.js"]
 
     _javascript_directories = [
         os.path.join(os.path.dirname(__file__), "../javascript"),
         os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
-    
-    def __init__(self, qappargs=None, debug_level=None):
-        """        
+
+    def __init__(self,
+                 qappargs=None,
+                 debug_level=None,
+                 want_compat=True,
+                 embed_jquery=True,
+                 embed_jquery_simulate=True,
+                 additional_js_files = None
+                ):
+        """
         Init a Browser instance.
-        
+
         @param qappargs: Arguments for QApplication constructor.
         @param debug_level: Debug level logging (L{ERROR} by default)
-        """ 
+        """
         self.application = QApplication(qappargs or [])
         """PyQt4.QtGui.Qapplication object."""
+        self.want_compat = want_compat
+        self.embed_jquery = embed_jquery
+        self.embed_jquery = embed_jquery_simulate
+        self.additional_js_files = additional_js_files
+        self.additional_js = ""
+        if not self.additional_js_files:
+            self.additional_js_files = []
+        if not want_compat:
+            self.jslib = '$'
         if debug_level is not None:
             self.debug_level = debug_level
         self.webpage = QWebPage()
@@ -96,57 +119,61 @@ class Browser:
         self.webframe = self.webpage.mainFrame()
         """PyQt4.QtWebKit.QWebFrame main webframe object."""
         self.webview = None
-        """PyQt4.QtWebKit.QWebView object."""        
+        """PyQt4.QtWebKit.QWebView object."""
         self._url_filter = None
         self._html_parser = None
-            
+
         # Javascript
         directory = _first(self._javascript_directories, os.path.isdir)
         if not directory:
             raise SpynnerError("Cannot find javascript directory: %s" %
-                self._javascript_directories)           
-        self.javascript = "".join(open(os.path.join(directory, fn)).read() 
-            for fn in self._javascript_files)
+                self._javascript_directories)
+        self.jquery = open(os.path.join(directory, self._jquery)).read()
+        self.jquery_simulate = open(os.path.join(directory, self._jquery_simulate)).read()
+        for fn in self.additional_js_files:
+            if not os.path.exists(fn):
+                fn = os.path.join(directory, fn)
+            self.additional_js += "\n%s" % open(fn).read()
 
-        self.webpage.javaScriptAlert = self._javascript_alert                
+        self.webpage.javaScriptAlert = self._javascript_alert
         self.webpage.javaScriptConsoleMessage = self._javascript_console_message
         self.webpage.javaScriptConfirm = self._javascript_confirm
         self.webpage.javaScriptPrompt = self._javascript_prompt
         self._javascript_confirm_callback = None
         self._javascript_confirm_prompt = None
-        
+
         # Network Access Manager and cookies
         self.manager = QNetworkAccessManager()
         """PyQt4.QtNetwork.QTNetworkAccessManager object."""
-        self.manager.createRequest = self._manager_create_request 
-        self.webpage.setNetworkAccessManager(self.manager)            
+        self.manager.createRequest = self._manager_create_request
+        self.webpage.setNetworkAccessManager(self.manager)
         self.cookiesjar = _ExtendedNetworkCookieJar()
         """PyQt4.QtNetwork.QNetworkCookieJar object."""
         self.manager.setCookieJar(self.cookiesjar)
-        self.manager.connect(self.manager, 
+        self.manager.connect(self.manager,
             SIGNAL("sslErrors(QNetworkReply *, const QList<QSslError> &)"),
             self._on_manager_ssl_errors)
-        self.manager.connect(self.manager, 
+        self.manager.connect(self.manager,
             SIGNAL('finished(QNetworkReply *)'),
             self._on_reply)
         self.manager.connect(self.manager,
             SIGNAL('authenticationRequired(QNetworkReply *, QAuthenticator *)'),
-            self._on_authentication_required)   
+            self._on_authentication_required)
         self._operation_names = dict(
-            (getattr(QNetworkAccessManager, s + "Operation"), s.lower()) 
+            (getattr(QNetworkAccessManager, s + "Operation"), s.lower())
             for s in ("Get", "Head", "Post", "Put"))
-        
-        # Webpage slots         
+
+        # Webpage slots
         self._load_status = None
         self._replies = 0
         self.webpage.setForwardUnsupportedContent(True)
         self.webpage.connect(self.webpage,
-            SIGNAL('unsupportedContent(QNetworkReply *)'), 
+            SIGNAL('unsupportedContent(QNetworkReply *)'),
             self._on_unsupported_content)
-        self.webpage.connect(self.webpage, 
+        self.webpage.connect(self.webpage,
             SIGNAL('loadFinished(bool)'),
-            self._on_load_finished)            
-        self.webpage.connect(self.webpage, 
+            self._on_load_finished)
+        self.webpage.connect(self.webpage,
             SIGNAL("loadStarted()"),
             self._on_load_started)
 
@@ -154,12 +181,12 @@ class Browser:
         if wait is None:
             wait = self.event_looptime
         self.application.processEvents()
-        time.sleep(wait)        
-                        
+        time.sleep(wait)
+
     def _on_load_started(self):
         self._load_status = None
-        self._debug(INFO, "Page load started")            
-    
+        self._debug(INFO, "Page load started")
+
     def _on_manager_ssl_errors(self, reply, errors):
         url = unicode(reply.url().toString())
         if self.ignore_ssl_errors:
@@ -174,17 +201,17 @@ class Browser:
         self._debug("HTTP auth required: %s (realm: %s)" % (url, realm))
         if not self._http_authentication_callback:
             self._debug(WARNING, "HTTP auth required, but no callback defined")
-            return        
-        credentials = self._http_authentication_callback(url, realm)        
-        if credentials:            
+            return
+        credentials = self._http_authentication_callback(url, realm)
+        if credentials:
             user, password = credentials
-            self._debug(INFO, "callback returned HTTP credentials: %s/%s" % 
+            self._debug(INFO, "callback returned HTTP credentials: %s/%s" %
                 (user, "*"*len(password)))
             authenticator.setUser(user)
             authenticator.setPassword(password)
         else:
             self._debug(WARNING, "HTTP auth callback returned no credentials")
-        
+
     def _manager_create_request(self, operation, request, data):
         url = unicode(request.url().toString())
         operation_name = self._operation_names[operation].upper()
@@ -197,8 +224,8 @@ class Browser:
                 request.setUrl(QUrl("about:blank"))
             else:
                 self._debug(DEBUG, "URL not filtered: %s" % url)
-        reply = QNetworkAccessManager.createRequest(self.manager, 
-            operation, request, data)        
+        reply = QNetworkAccessManager.createRequest(self.manager,
+            operation, request, data)
         return reply
 
     def _on_reply(self, reply):
@@ -207,7 +234,7 @@ class Browser:
         self._reply_status = not bool(reply.error())
 
         if reply.error():
-            self._debug(WARNING, "Reply error: %s - %d (%s)" % 
+            self._debug(WARNING, "Reply error: %s - %d (%s)" %
                 (self._reply_url, reply.error(), reply.errorString()))
             self.errorCode = reply.error()
             self.errorMessage = reply.errorString()
@@ -219,14 +246,14 @@ class Browser:
     def _on_unsupported_content(self, reply, outfd=None):
         if not reply.error():
             self._start_download(reply, outfd)
-        else:            
+        else:
             self._debug(ERROR, "Error on unsupported content: %s" % reply.errorString())
-                             
+
     def _javascript_alert(self, webframe, message):
         self._debug(INFO, "Javascript alert: %s" % message)
         if self.webview:
             QWebPage.javaScriptAlert(self.webpage, webframe, message)
-        
+
     def _javascript_console_message(self, message, line, sourceid):
         if line:
             self._debug(INFO, "Javascript console (%s:%d): %s" %
@@ -237,18 +264,18 @@ class Browser:
     def _javascript_confirm(self, webframe, message):
         smessage = unicode(message)
         url = webframe.url()
-        self._debug(INFO, "Javascript confirm (webframe url = %s): %s" % 
+        self._debug(INFO, "Javascript confirm (webframe url = %s): %s" %
             (url, smessage))
         if self._javascript_confirm_callback:
             value = self._javascript_confirm_callback(url, smessage)
             self._debug(INFO, "Javascript confirm callback returned %s" % value)
-            return value 
+            return value
         return QWebPage.javaScriptConfirm(self.webpage, webframe, message)
 
     def _javascript_prompt(self, webframe, message, defaultvalue, result):
         url = webframe.url()
         smessage = unicode(message)
-        self._debug(INFO, "Javascript prompt (webframe url = %s): %s" % 
+        self._debug(INFO, "Javascript prompt (webframe url = %s): %s" %
             (url, smessage))
         if self._javascript_prompt_callback:
             value = self._javascript_prompt_callback(url, smessage, defaultvalue)
@@ -260,39 +287,60 @@ class Browser:
             return True
         return QWebPage.javaScriptPrompt(self.webpage, webframe, message,
             defaultvalue, result)
-        
+
     def _on_webview_destroyed(self, window):
         self.webview = None
-                                             
-    def _on_load_finished(self, successful):        
-        self._load_status = successful  
+
+    def _on_load_finished(self, successful):
+        self.webframe = self.webpage.mainFrame()
+        self._load_status = successful
         status = {True: "successful", False: "error"}[successful]
-        self._debug(INFO, "Page load finished (%d bytes): %s (%s)" % 
+        self._debug(INFO, "Page load finished (%d bytes): %s (%s)" %
             (len(self.html), self.url, status))
 
-    def _get_filepath_for_url(self, url):
+    def _get_filepath_for_url(self, url, reply=None):
         urlinfo = urlparse.urlsplit(url)
-        path = os.path.join(self.download_directory,
-            urlinfo.netloc + urlinfo.path)
+        path = os.path.join(os.path.abspath(self.download_directory), urlinfo.netloc)
+        if urlinfo.path != '/':
+            p = urlinfo.path
+            if len(p) > 2:
+                if p[0] == '/':
+                    p = p[1:]
+            path = os.path.join(path, p)
+        if reply.hasRawHeader('content-disposition'):
+            cd = '%s' % reply.rawHeader('content-disposition')
+            pattern = 'attachment;filename=(.*)'
+            if re.match(pattern, cd):
+                filename = re.sub('attachment;filename=(.*)', '\\1', cd)
+                path = os.path.join(path, filename)
         if not os.path.isdir(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
+        if path is None:
+            raise SpynnerError('Download mode is unknown, can\'t determine the final filename')
         return path
 
     def _start_download(self, reply, outfd):
+        url = unicode(reply.url().toString())
+        path = None
+        if outfd is None:
+            path = self._get_filepath_for_url(url, reply)
+            outfd = open(path, "wb")
         def _on_ready_read():
             data = reply.readAll()
+            if getattr(reply, 'downloaded_nbytes', None) is None:
+                reply.downloaded_nbytes= 0
             reply.downloaded_nbytes += len(data)
             outfd.write(data)
-            self._debug(DEBUG, "Read from download stream (%d bytes): %s" 
+            if path is not None:
+                dict(self.files)[path]['finished'] = True
+            self._debug(DEBUG, "Read from download stream (%d bytes): %s"
                 % (len(data), url))
         def _on_network_error():
             self.debug(ERROR, "Network error on download: %s" % url)
         def _on_finished():
             self._debug(INFO, "Download finished: %s" % url)
-        url = unicode(reply.url().toString())
-        if outfd is None:
-            path = self._get_filepath_for_url(url)
-            outfd = open(path, "wb")            
+        if path is not None:
+            self.files.append((path, {'reply':reply,'finished':False,})) 
         reply.connect(reply, SIGNAL("readyRead()"), _on_ready_read)
         reply.connect(reply, SIGNAL("NetworkError()"), _on_network_error)
         reply.connect(reply, SIGNAL("finished()"), _on_finished)
@@ -303,7 +351,7 @@ class Browser:
         if self._load_status is not None:
             load_status = self._load_status
             self._load_status = None
-            return load_status        
+            return load_status
         itime = time.time()
         while self._load_status is None:
             if timeout and time.time() - itime > timeout:
@@ -311,12 +359,11 @@ class Browser:
             self._events_loop()
         self._events_loop(0.0)
         if self._load_status:
-            jscode = "var %s = jQuery.noConflict();" % self.jslib
-            self.runjs(self.javascript + jscode, debug=False)
-            self.webpage.setViewportSize(self.webpage.mainFrame().contentsSize())            
+            self.load_js()
+            self.webpage.setViewportSize(self.webpage.mainFrame().contentsSize())
         load_status = self._load_status
         self._load_status = None
-        return load_status        
+        return load_status
 
     def _debug(self, level, *args):
         if level <= self.debug_level:
@@ -336,15 +383,16 @@ class Browser:
         if lenfield not in resmap:
             return False
         return resmap[lenfield].toInt()[0]
-    
+
     def jslen(self, selector):
         res = self.runjs("%s('%s')" % (self.jslib, selector))
         return self.get_js_obj_length(res)
-    
+
     def _runjs_on_jquery(self, name, code):
         res = self.runjs(code)
         if self.get_js_obj_length(res) < 1:
             raise SpynnerJavascriptError("error on %s: %s" % (name, code))
+        return res
 
     def _get_html(self):
         return unicode(self.webframe.toHtml())
@@ -358,17 +406,17 @@ class Browser:
         return unicode(self.webframe.url().toString())
 
     # Properties
-                 
+
     url = property(_get_url)
-    """Current URL."""        
-                 
+    """Current URL."""
+
     html = property(_get_html)
     """Rendered HTML in current page."""
-                 
+
     #soup = property(_get_soup)
     soup = None #change to none so that changes are retained through mulitple calls
     """HTML soup (see L{set_html_parser})."""
-               
+
     #{ Basic interaction with browser
 
     def load(self, url):
@@ -376,10 +424,49 @@ class Browser:
         self.webframe.load(QUrl(url))
         return self._wait_load()
 
-    def load_request(self, req):
-        """Load a network request and return status (a boolean)."""
-        self.webframe.load(req)
-        return self._wait_load()
+
+    def is_jquery_loaded(self):
+        return self.runjs('spynner_jquery_loaded;', debug=False).toString() == '1'
+
+    def is_jquery_simulate_loaded(self):
+        return self.runjs('spynner_jquery_simulate_loaded;', debug=False).toString() == '1'
+
+    def is_additional_js_loaded(self):
+        return self.runjs('spynner_additional_js_loaded;', debug=False).toString() == '1'
+
+    def load_jquery(self, force=False):
+        """Load jquery in the current frame"""
+        jscode = ''
+        if not self.is_jquery_loaded():
+            if self.embed_jquery:
+                jscode += self.jquery
+            if self.want_compat:
+                jscode += "\nvar %s = jQuery.noConflict();" % self.jslib
+            jscode += "var spynner_jquery_loaded = 1 ;"
+            self.runjs(jscode, debug=False)
+
+    def load_js(self):
+        self.load_jquery()
+        self.load_jquery_simulate()
+        self.load_additional_js()
+
+    def load_jquery_simulate(self, force=False):
+        """Load jquery in the current frame"""
+        if not self.is_jquery_simulate_loaded():
+            self.runjs(self.jquery_simulate, debug=False)
+            self.runjs("var spynner_jquery_simulate_loaded = 1 ;", debug=False)
+
+    def load_additional_js(self, force=False):
+        """Load jquery in the current frame"""
+        if not self.is_additional_js_loaded():
+            self.runjs(self.additional_js, debug=False)
+            self.runjs("var spynner_additional_js_loaded = 1 ;", debug=False)
+
+    def wait_a_little(br, timeout):
+        try:
+            br.wait_load(timeout)
+        except SpynnerTimeout, e:
+            pass
 
     def wait_requests(self, wait_requests = None, url = None, url_regex = None):
         if wait_requests:
@@ -398,31 +485,80 @@ class Browser:
                             break
                 self._events_loop()
             self._events_loop(0.0)
-    
-    def click(self, selector, wait_load=False, wait_requests=None, timeout=None):
+
+    def sendText(self, selector, text, keyboard_modifiers = Qt.NoModifier, wait_load=False, wait_requests=None, timeout=None):
         """
-        Click any clickable element in page.
-        
-        @param selector: jQuery selector.
+        Send text in any element (to fill it for example)
+
+        @param selector: QtWebkit Selector
+        @param keys to input in the QT way
         @param wait_load: If True, it will wait until a new page is loaded.
-        @param timeout: Seconds to wait for the page to load before 
+        @param timeout: Seconds to wait for the page to load before
                                        raising an exception.
         @param wait_requests: How many requests to wait before returning. Useful
                               for AJAX requests.
-    
-        By default this method will not wait for a page to load. 
-        If you are clicking a link or submit button, you must call this
-        method with C{wait_load=True} or, alternatively, call 
-        L{wait_load} afterwards. However, the recommended way it to use 
-        L{click_link}.
-                        
-        When a non-HTML file is clicked this method will download it. The 
-        file is automatically saved keeping the original structure (as 
-        wget --recursive does). For example, a file with URL 
-        I{http://server.org/dir1/dir2/file.ext} will be saved to  
-        L{download_directory}/I{server.org/dir1/dir2/file.ext}.                 
+
+        >>> br.sendKeys('#val_cel_dentifiant', 'fancy text')
         """
-        jscode = "%s('%s').simulate('click')" % (self.jslib, selector)
+        element = self.webframe.findFirstElement(selector)
+        element.setFocus()
+        eventp = QKeyEvent(QEvent.KeyPress, Qt.Key_A, keyboard_modifiers, QString(text))
+        self.application.sendEvent(self.webview, eventp)
+        self._events_loop(timeout)
+        self.wait_requests(wait_requests)
+        if wait_load:
+            return self._wait_load(timeout)
+
+    def sendKeys(self, selector, keys, keyboard_modifiers = Qt.NoModifier, wait_load=False, wait_requests=None, timeout=None):
+        """
+        Click any clickable element in page.
+        see http://www.riverbankcomputing.co.uk/static/Docs/PyQt4/html/qt.html#Key-enum
+
+        @param selector: jQtWebkit Selector
+        @param keys to input in the QT way
+        @param wait_load: If True, it will wait until a new page is loaded.
+        @param timeout: Seconds to wait for the page to load before
+                                       raising an exception.
+        @param wait_requests: How many requests to wait before returning. Useful
+                              for AJAX requests.
+
+        Send raw keys:
+        >>> br.sendKeys('#val_cel_dentifiant', [Qt.Key_A,Qt.Key_A,Qt.Key_C,]
+        """
+        element = self.webframe.findFirstElement(selector)
+        element.setFocus()
+        for key in keys:
+            eventp = QKeyEvent(QEvent.KeyPress, key, keyboard_modifiers)
+            self.application.sendEvent(self.webview, eventp)
+            self._events_loop(timeout)
+        self.wait_requests(wait_requests)
+        if wait_load:
+            return self._wait_load(timeout)
+
+    def click(self, selector, wait_load=False, wait_requests=None, timeout=None):
+        """
+        Click any clickable element in page.
+
+        @param selector: jQuery selector.
+        @param wait_load: If True, it will wait until a new page is loaded.
+        @param timeout: Seconds to wait for the page to load before
+                                       raising an exception.
+        @param wait_requests: How many requests to wait before returning. Useful
+                              for AJAX requests.
+
+        By default this method will not wait for a page to load.
+        If you are clicking a link or submit button, you must call this
+        method with C{wait_load=True} or, alternatively, call
+        L{wait_load} afterwards. However, the recommended way it to use
+        L{click_link}.
+
+        When a non-HTML file is clicked this method will download it. The
+        file is automatically saved keeping the original structure (as
+        wget --recursive does). For example, a file with URL
+        I{http://server.org/dir1/dir2/file.ext} will be saved to
+        L{download_directory}/I{server.org/dir1/dir2/file.ext}.
+        """
+        jscode = "%s('%s').simulate('click');" % (self.jslib, selector)
         self._replies = 0
         self._runjs_on_jquery("click", jscode)
         self.wait_requests(wait_requests)
@@ -436,42 +572,206 @@ class Browser:
     def click_ajax(self, selector, wait_requests=1, timeout=None):
         """Click a AJAX link and wait for the request to finish."""
         return self.click(selector, wait_requests=wait_requests, timeout=timeout)
-    
+
+    def moveMouse(self, where, timeout=1, real=False):
+        """Move the mouse to a relative to the window point."""
+        if not real:
+            where = self.getRealPosition(where)
+        cursorw = QCursor()
+        cursorw.setPos(where)
+        self.webview.grabMouse()
+        self.wait(1)
+        self.webview.setCursor(cursorw)
+        self.wait(timeout)
+        self.webview.releaseMouse()
+
+    def getRealPosition(self, point):
+        """Compute the coordinates by merging with the containing frame"""
+        rect = self.webframe.geometry()
+        where = QPoint(rect.x() + point.x(), rect.y() + point.y())
+        where = self.webview.mapToGlobal(where)
+        return where
+
+    def nativeClickAt(self, where, timeout):
+        where = self.getRealPosition(where)
+        eventp = QMouseEvent(QEvent.MouseButtonPress, where, Qt.LeftButton, Qt.NoButton, Qt.NoModifier);
+        eventl = QMouseEvent(QEvent.MouseButtonRelease, where, Qt.LeftButton, Qt.NoButton, Qt.NoModifier);
+        self.webview.grabMouse()
+        self.moveMouse(where, real=True)
+        self.application.sendEvent(self.webview, eventp)
+        self.application.sendEvent(self.webview, eventl)
+        self._events_loop(timeout)
+        self._events_loop(timeout)
+        self.webview.releaseMouse()
+
+    def getPosition(self, selector):
+        jscode = "off = %s('%s').offset();off.left+','+off.top" % (self.jslib, selector)
+        self._replies = 0
+        try:
+            x, y = ("%s"%self.runjs(jscode, debug=False).toString()).split(',')
+        except Exception, e:
+           raise  SpynnerError('Cant find %s (%s)' % (selector, e))
+        where = QPoint(int(x), int(y))
+        return where
+
+    def wk_click(self, selector, wait_load=False, wait_requests=None, timeout=None, offsetx = 0, offsety = 0):
+        """
+        Click any clickable element in page by using raw javascript WebKit.click() method.
+
+        @param selector: WebKit selector.
+        @param wait_load: If True, it will wait until a new page is loaded.
+        @param timeout: Seconds to wait for the page to load before
+                                       raising an exception.
+        @param wait_requests: How many requests to wait before returning. Useful
+                              for AJAX requests.
+
+        By default this method will not wait for a page to load.
+        If you are clicking a link or submit button, you must call this
+        method with C{wait_load=True} or, alternatively, call
+        L{wait_load} afterwards. However, the recommended way it to use
+        L{click_link}.
+
+        When a non-HTML file is clicked this method will download it. The
+        file is automatically saved keeping the original structure (as
+        wget --recursive does). For example, a file with URL
+        I{http://server.org/dir1/dir2/file.ext} will be saved to
+        L{download_directory}/I{server.org/dir1/dir2/file.ext}.
+        """
+        element = self.webframe.findFirstElement(selector)
+        element.evaluateJavaScript("this.click()")
+        time.sleep(0.5)
+        self.wait_requests(wait_requests)
+        if wait_load:
+            return self._wait_load(timeout)
+
+    def wk_click_link(self, selector, timeout=None):
+        """Click a link and wait for the page to load."""
+        return self.wk_click(selector, wait_load=True, timeout=timeout)
+
+    def wk_click_ajax(self, selector, wait_requests=1, timeout=None):
+        """Click a AJAX link and wait for the request to finish."""
+        return self.wk_click(selector, wait_requests=wait_requests, timeout=timeout)
+
+    def native_click(self, selector, wait_load=False, wait_requests=None, timeout=None, offsetx = 0, offsety = 0):
+        """
+        Click any clickable element in page by sending a raw QT mouse event.
+
+        @param selector: jQuery selector.
+        @param wait_load: If True, it will wait until a new page is loaded.
+        @param timeout: Seconds to wait for the page to load before
+                                       raising an exception.
+        @param wait_requests: How many requests to wait before returning. Useful
+                              for AJAX requests.
+
+        By default this method will not wait for a page to load.
+        If you are clicking a link or submit button, you must call this
+        method with C{wait_load=True} or, alternatively, call
+        L{wait_load} afterwards. However, the recommended way it to use
+        L{click_link}.
+
+        When a non-HTML file is clicked this method will download it. The
+        file is automatically saved keeping the original structure (as
+        wget --recursive does). For example, a file with URL
+        I{http://server.org/dir1/dir2/file.ext} will be saved to
+        L{download_directory}/I{server.org/dir1/dir2/file.ext}.
+        """
+        where = self.getPosition(selector)
+        where = QPoint(where.x() + offsetx , where.y() + offsety)
+        self.nativeClickAt(where, timeout)
+        self.wait_requests(wait_requests)
+        if wait_load:
+            return self._wait_load(timeout)
+
+    def native_click_link(self, selector, timeout=None):
+        """Click a link and wait for the page to load."""
+        return self.native_click(selector, wait_load=True, timeout=timeout)
+
+    def native_click_ajax(self, selector, wait_requests=1, timeout=None):
+        """Click a AJAX link and wait for the request to finish."""
+        return self.native_click(selector, wait_requests=wait_requests, timeout=timeout)
+
     def wait_load(self, timeout=None):
         """
         Wait until the page is loaded.
-        
+
         @param timeout: Time to wait (seconds) for the page load to complete.
         @return: Boolean state
         @raise SpynnerTimeout: If timeout is reached.
         """
         return self._wait_load(timeout)
 
+    def wait_for_content(self, callback, tries=None, error_message=None, delay=5):
+        """
+        Wait until the page is loaded.
+
+        @param content: callback that takes the browser as input must return true when suceed
+        @param timeout: number of retries / True for no limit
+        @param delay: delay between retries
+        @param error_message: additional message to set in the error message
+        @return: Boolean state
+        @raise SpynnerTimeout: If timeout is reached.
+
+        >>> def wait_toto(browser):
+        ...     if 'toto' in browser.html:
+        ...         return True
+        ...     return False
+        >>> br.wait_for_content(wait_toto)
+        """
+        ref_tries = tries
+        ret = None
+        found = False
+        loaded = False
+        if not tries:
+            tries = True
+        while bool(tries) and not found:
+            if isinstance(tries, int):
+                if tries > 0:
+                    tries -= 1
+            if callback(self):
+                found = True
+            if not found:
+                if not loaded:
+                    try:
+                        loaded = self._wait_load(timeout=delay)
+                        self._debug(DEBUG, 'content loaded, waiting for content to mach the callback')
+                    except SpynnerTimeout, e:
+                        self._debug(DEBUG, 'content not loaded, fallback by waiting')
+                else:
+                    time.sleep(delay)
+        if not found:
+            msg = u"Timeout reached: %d retries for %s delay." % (tries, delay)
+            if error_message:
+                msg += u'\n%s' % error_message
+            raise SpynnerTimeout(msg)
+        load_status = self._load_status
+        self._load_status = None
+        return load_status
+
     def wait(self, waittime):
         """
         Wait some time.
-        
+
         @param waittime: Time to wait (seconds).
-        
+
         This is an active wait, the events loop will be run, so it
         may be useful to wait for synchronous Javascript events that
         change the DOM.
-        """   
+        """
         itime = time.time()
         while time.time() - itime < waittime:
-            self._events_loop()        
+            self._events_loop()
 
     def close(self):
-        """Close Browser instance and release resources."""        
+        """Close Browser instance and release resources."""
         if self.webview:
             self.destroy_webview()
         if self.webpage:
             del self.webpage
 
     #}
-                      
+
     #{ Webview
-    
+
     def create_webview(self, show=False):
         """Create a QWebView object and insert current QWebPage."""
         if self.webview:
@@ -489,7 +789,7 @@ class Browser:
         """Destroy current QWebView."""
         if not self.webview:
             raise SpynnerError("Cannot destroy webview (not initialized)")
-        del self.webview 
+        del self.webview
 
     def show(self):
         """Show webview browser."""
@@ -504,7 +804,7 @@ class Browser:
         self.webview.hide()
 
     def browse(self):
-        """Let the user browse the current page (infinite loop).""" 
+        """Let the user browse the current page (infinite loop)."""
         if not self.webview:
             raise SpynnerError("Webview is not initialized")
         self.show()
@@ -518,22 +818,22 @@ class Browser:
     def set_webframe_to_default(self):
         self.webframe = self.webpage.mainFrame()
 
-    def set_webframe(self, framenumber):
-        cf = self.webframe.childFrames()
-	
+    def setframe_obj(self, frame):
         try:
-           self.webframe = cf[int(framenumber)]
+           self.webframe = frame
         except:
             raise SpynnerError("childframe does not exist")
-		
-	"""Inject jquery into frame"""
-        jscode = "var %s = jQuery.noConflict();" % self.jslib
-        self.runjs(self.javascript + jscode, debug=False)
+        self.load_js()
+
+    def set_webframe(self, framenumber):
+        cf = self.webframe.childFrames()
+        f = cf[int(framenumber)]
+        self.setframe_obj(f)
 
     #}
-                        
+
     #{ Form manipulation
-    
+
     def fill(self, selector, value):
         """Fill an input text with a string value using a jQuery selector."""
         escaped_value = value.replace("'", "\\'")
@@ -556,38 +856,37 @@ class Browser:
         jscode = "%s('%s').filter('[value=%s]').simulate('click')" % (self.jslib, selector, escaped_value)
         self._runjs_on_jquery("choose", jscode)
 
-
-    def select(self, selector):        
+    def select(self, selector):
         """Choose a option in a select using a jQuery selector."""
         jscode = "%s('%s').attr('selected', 'selected')" % (self.jslib, selector)
         self._runjs_on_jquery("select", jscode)
-    
+
     submit = click_link
-      
+
     #}
-    
-    #{ Javascript 
-    
+
+    #{ Javascript
+
     def runjs(self, jscode, debug=True):
         """
         Inject Javascript code into the current context of page.
 
         @param jscode: Javascript code to injected.
         @param debug: Set to False to disable debug output for this injection.
-        
-        You can call Jquery even if the original page does not include it 
-        as Spynner injects the library for every loaded page. You must 
-        use C{jq(...)} instead of of C{jQuery} or the common {$(...)} 
-        shortcut. 
-        
-        @note: You can change the jq alias (see L{jslib}).        
+
+        You can call Jquery even if the original page does not include it
+        as Spynner injects the library for every loaded page. You must
+        use C{jq(...)} instead of of C{jQuery} or the common {$(...)}
+        shortcut.
+
+        @note: You can change the jq alias (see L{jslib}).
         """
         if debug:
             self._debug(DEBUG, "Run Javascript code: %s" % jscode)
 
         #XXX evaluating JS twice must be wrong but finding the bug is proving tricky...
         #JavaScriptCore/interpreter/Interpreter.cpp and JavaScriptCore/runtime/Completion.cpp
-        #JavaScriptCore/runtime/Completion.cpp is catching an exception (sometimes) and 
+        #JavaScriptCore/runtime/Completion.cpp is catching an exception (sometimes) and
         #returning "TypeError: Type error" - BUT it looks like the JS does complete after
         #the function has already returned
         r = self.webframe.evaluateJavaScript(jscode)
@@ -598,16 +897,16 @@ class Browser:
     def set_javascript_confirm_callback(self, callback):
         """
         Set function callback for Javascript confirm pop-ups.
-        
+
         By default Javascript confirmations are not answered. If the webpage
         you are working pops Javascript confirmations, be sure to set a callback
-        for them. 
-        
+        for them.
+
         Calback signature: C{javascript_confirm_callback(url, message)}
-        
-            - url: Url where the popup was launched.        
+
+            - url: Url where the popup was launched.
             - param message: String message.
-        
+
         The callback should return a boolean (True meaning 'yes', False meaning 'no')
         """
         self._javascript_confirm_callback = callback
@@ -615,31 +914,31 @@ class Browser:
     def set_javascript_prompt_callback(self, callback):
         """
         Set function callback for Javascript prompt.
-        
+
         By default Javascript prompts are not answered. If the webpage
         you are working pops Javascript prompts, be sure to set a callback
-        for them. 
-        
+        for them.
+
         Callback signature: C{javascript_prompt_callback(url, message, defaultvalue)}
-        
+
             - url: Url where the popup prompt was launched.
             - message: String message.
             - defaultvalue: Default value for prompt answer
-            
+
         The callback should return a string with the answer or None to cancel the prompt.
         """
         self._javascript_prompt_callback = callback
 
     #}
-    
+
     #{ Cookies
-    
+
     def get_cookies(self):
-        """Return string containing the current cookies in Mozilla format.""" 
+        """Return string containing the current cookies in Mozilla format."""
         return self.cookiesjar.mozillaCookies()
 
     def set_cookies(self, string_cookies):
-        """Set cookies from a string with Mozilla-format cookies.""" 
+        """Set cookies from a string with Mozilla-format cookies."""
         return self.cookiesjar.setMozillaCookies(string_cookies)
 
     #}
@@ -659,7 +958,7 @@ class Browser:
                 proxy.setType(1)
         elif urlinfo.scheme == 'http' :
                 proxy.setType(3)
-        else : 
+        else :
                 proxy.setType(2)
                 self.manager.setProxy(proxy)
                 return self.manager.proxy()
@@ -678,28 +977,28 @@ class Browser:
 
         self.manager.setProxy(proxy)
         return self.manager.proxy()
-      
+
     #}
-    
+
     #{ Download files
-                
+
     def download(self, url, outfd=None):
         """
         Download a given URL using current cookies.
-        
+
         @param url: URL or path to download
         @param outfd: Output file-like stream. If None, return data string.
         @return: Bytes downloaded (None if something went wrong)
-        @note: If url is a path, the current base URL will be pre-appended.        
+        @note: If url is a path, the current base URL will be pre-appended.
         """
         def _on_reply(reply):
             url = unicode(reply.url().toString())
             self._download_reply_status = not bool(reply.error())
         self._download_reply_status = None
         if not urlparse.urlsplit(url).scheme:
-            url = urlparse.urljoin(self.url, url) 
+            url = urlparse.urljoin(self.url, url)
         request = QNetworkRequest(QUrl(url))
-        # Create a new manager to process this download        
+        # Create a new manager to process this download
         manager = QNetworkAccessManager()
         # create a copy of the cookies jar to prevent
         # CJ to be garbage collected
@@ -713,27 +1012,27 @@ class Browser:
         manager.connect(manager, SIGNAL('finished(QNetworkReply *)'), _on_reply)
         outfd_set = bool(outfd)
         if not outfd_set:
-            outfd = StringIO()            
+            outfd = StringIO()
         self._start_download(reply, outfd)
         while self._download_reply_status is None:
             self._events_loop()
         if outfd_set:
             return (reply.downloaded_nbytes if not reply.error() else None)
         else:
-            return outfd.getvalue()  
+            return outfd.getvalue()
 
     #}
-            
+
     #{ HTML and tag soup parsing
-    
+
     def set_html_parser(self, parser):
         """
         Set HTML parser used to generate the HTML L{soup}.
-        
+
         @param parser: Callback called to generate the soup.
-        
+
         When a HTML parser is set for a Browser, the property L{soup} returns
-        the parsed HTML.        
+        the parsed HTML.
         """
         self._html_parser = parser
 
@@ -744,43 +1043,43 @@ class Browser:
     #}
 
     #{ HTTP Authentication
-     
+
     def set_http_authentication_callback(self, callback):
         """
         Set HTTP authentication request callback.
-        
-        The callback must have this signature: 
-        
-        C{http_authentication_callback(url, realm)}: 
-                        
+
+        The callback must have this signature:
+
+        C{http_authentication_callback(url, realm)}:
+
             - C{url}: URL where the requested was made.
             - C{realm}: Realm requiring authentication.
-            
-        The callback should return a pair of string containing (user, password) 
+
+        The callback should return a pair of string containing (user, password)
         or None if you don't want to answer.
         """
         self._http_authentication_callback = callback
-    
+
     #}
-             
+
     #{ Miscellaneous
-    
+
     def snapshot(self, box=None, format=QImage.Format_ARGB32):
-        """        
+        """
         Take an image snapshot of the current frame.
-        
+
         @param box: 4-element tuple containing box to capture (x1, y1, x2, y2).
                     If None, capture the whole page.
         @param format: QImage format (see QImage::Format_*).
         @return: A QImage image.
-        
+
         Typical usage:
-        
+
         >>> browser.load(url)
-        >>> browser.snapshot().save("webpage.png") 
+        >>> browser.snapshot().save("webpage.png")
         """
         if box:
-            x1, y1, x2, y2 = box        
+            x1, y1, x2, y2 = box
             w, h = (x2 - x1), (y2 - y1)
             image0 = QImage(QSize(x2, y2), format)
             painter = QPainter(image0)
@@ -789,11 +1088,11 @@ class Browser:
             image = image0.copy(x1, y1, w, h)
         else:
             image = QImage(self.webpage.viewportSize(), format)
-            painter = QPainter(image)                        
+            painter = QPainter(image)
             self.webpage.mainFrame().render(painter)
             painter.end()
         return image
-            
+
     def get_url_from_path(self, path):
         """Return the URL for a given path using the current URL as base."""
         return urlparse.urljoin(self.url, path)
@@ -801,18 +1100,18 @@ class Browser:
     def set_url_filter(self, url_filter):
         """
         Set function callback to filter URL.
-        
-        By default all requested elements of a page are loaded. That includes 
-        stylesheets, images and many other elements that you may not need at all.         
-        Use this method to define the callback that will be called every time 
-        a new request is made. The callback must have this signature: 
-        
-        C{my_url_filter(operation, url)}: 
-                        
-            - C{operation}: string with HTTP operation: C{get}, C{head}, 
+
+        By default all requested elements of a page are loaded. That includes
+        stylesheets, images and many other elements that you may not need at all.
+        Use this method to define the callback that will be called every time
+        a new request is made. The callback must have this signature:
+
+        C{my_url_filter(operation, url)}:
+
+            - C{operation}: string with HTTP operation: C{get}, C{head},
                             C{post} or C{put}.
             - C{url}: requested item URL.
-            
+
         It should return C{True} (proceed) or C{False} (reject).
         """
         self._url_filter = url_filter
@@ -832,7 +1131,7 @@ def _debug(obj, linefeed=True, outfd=sys.stderr, outputencoding="utf8"):
     strobj = str(obj) + ("\n" if linefeed else "")
     outfd.write(strobj)
     outfd.flush()
-     
+
 class SpynnerError(Exception):
     """General Spynner error."""
 
@@ -843,22 +1142,22 @@ class SpynnerTimeout(Exception):
     """A timeout (usually on page load) has been reached."""
 
 class SpynnerJavascriptError(Exception):
-    """Error on the injected Javascript code.""" 
-                   
+    """Error on the injected Javascript code."""
+
 class _ExtendedNetworkCookieJar(QNetworkCookieJar):
     def mozillaCookies(self):
         """
         Return all cookies in Mozilla text format:
-        
+
         # domain domain_flag path secure_connection expiration name value
-        
-        .firefox.com     TRUE   /  FALSE  946684799   MOZILLA_ID  100103        
+
+        .firefox.com     TRUE   /  FALSE  946684799   MOZILLA_ID  100103
         """
-        header = ["# Netscape HTTP Cookie File", ""]        
+        header = ["# Netscape HTTP Cookie File", ""]
         def bool2str(value):
             return {True: "TRUE", False: "FALSE"}[value]
-        def byte2str(value):            
-            return str(value)        
+        def byte2str(value):
+            return str(value)
         def get_line(cookie):
             domain_flag = str(cookie.domain()).startswith(".")
             return "\t".join([
@@ -875,7 +1174,7 @@ class _ExtendedNetworkCookieJar(QNetworkCookieJar):
 
     def setMozillaCookies(self, string_cookies):
         """Set all cookies from Mozilla test format string.
-        .firefox.com     TRUE   /  FALSE  946684799   MOZILLA_ID  100103        
+        .firefox.com     TRUE   /  FALSE  946684799   MOZILLA_ID  100103
         """
         def str2bool(value):
             return {"TRUE": True, "FALSE": False}[value]
@@ -890,6 +1189,8 @@ class _ExtendedNetworkCookieJar(QNetworkCookieJar):
             cookie.setSecure(str2bool(is_secure))
             cookie.setExpirationDate(QDateTime.fromTime_t(int(expiration)))
             return cookie
-        cookies = [get_cookie(line) for line in string_cookies.splitlines() 
+        cookies = [get_cookie(line) for line in string_cookies.splitlines()
           if line.strip() and not line.strip().startswith("#")]
         self.setAllCookies(filter(bool, cookies))
+
+

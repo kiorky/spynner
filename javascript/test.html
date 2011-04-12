@@ -1,0 +1,19 @@
+<html>
+  <head>
+    <script type="text/javascript" src="jquery-1.5.2.js"></script>
+    <script type="text/javascript" src="jquery.simulate.js"></script>
+    <script type="text/javascript">
+    var jq = jQuery.noConflict();
+    jq(document).ready(function() {
+      jq('input').simulate('click');}
+    );
+  </script>
+</head>
+<body>
+  <form action="a" method="get">
+    <input type="hidden" name="foo" value="3"/>
+    <input type="submit" name="bar" value="toto" id="toto"/>
+    test
+  </form>
+</body>
+</html>
