@@ -331,13 +331,14 @@ class Browser(object):
                 reply.downloaded_nbytes= 0
             reply.downloaded_nbytes += len(data)
             outfd.write(data)
-            if path is not None:
-                dict(self.files)[path]['finished'] = True
             self._debug(DEBUG, "Read from download stream (%d bytes): %s"
                 % (len(data), url))
         def _on_network_error():
             self.debug(ERROR, "Network error on download: %s" % url)
         def _on_finished():
+            if path is not None:
+                outfd.flush()
+                dict(self.files)[path]['finished'] = True
             self._debug(INFO, "Download finished: %s" % url)
         if path is not None:
             self.files.append((path, {'reply':reply,'finished':False,})) 
