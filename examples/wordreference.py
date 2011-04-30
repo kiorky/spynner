@@ -1,17 +1,15 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import spynner
 import pyquery
-import os
-from StringIO import StringIO
 
-browser = spynner.Browser(debug_level=spynner.INFO)
+browser = spynner.Browser(debug_level=spynner.DEBUG)
 browser.create_webview()
 browser.show()
 browser.set_html_parser(pyquery.PyQuery)
 browser.load("http://www.wordreference.com")
 browser.select("#esen")
-browser.fill("input[name=enit]", "hola")
-browser.click("input[name=b]")
+browser.fill("input[name=w]", "hola")
+browser.click("input[name=B10]")
 browser.wait_load()
 print "url:", browser.url
 

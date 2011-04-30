@@ -53,6 +53,7 @@ setup(
         "spynner",
     ],
     #install_requires=['pyqt'],
+    extras_require = {'test': ['pyquery']},
     cmdclass={'gen_doc': gen_doc},    
     scripts=[],
     license="GNU Public License v3.0",

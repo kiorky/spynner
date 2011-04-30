@@ -56,63 +56,67 @@ class Browser(object):
     >>> print browser.url, len(browser.html)
     >>> browser.close()
     """
-    ignore_ssl_errors = True
-    """@ivar: If True, ignore SSL certificate errors."""
-    user_agent = None
-    """@ivar: User agent for requests (see QWebPage::userAgentForUrl for details)"""
-    jslib = "jq"
-    """@ivar: Library name for jQuery library injected by default to pages."""
-    download_directory = "."
-    """@ivar: Directory where downloaded files will be stored."""
-    files = []
-    """@ivar: Track files download key is the path, each entry is in the form {'reply': replyobj, 'req': reqobj}"""
-    debug_stream = sys.stderr
-    """@ivar: File-like stream where debug output will be written."""
-    debug_level = ERROR
-    """@ivar: Debug verbose level (L{ERROR}, L{WARNING}, L{INFO} or L{DEBUG})."""
-    event_looptime = 0.01
-    """@ivar: Event loop dispatcher loop delay (seconds)."""
-    want_compat = True
-    """@ivar: IF True: Use jQuery.noConflict, else just use '$'"""
-
-    _jquery = 'jquery-1.5.2.js'
-    _jquery_simulate = 'jquery.simulate.js'
-
     errorCode = None
     errorMessage = None
-
     _javascript_directories = [
         os.path.join(os.path.dirname(__file__), "../javascript"),
         os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
+    _jquery = 'jquery-1.5.2.js'
+    _jquery_simulate = 'jquery.simulate.js' 
 
     def __init__(self,
                  qappargs=None,
-                 debug_level=None,
+                 debug_level=ERROR,
                  want_compat=True,
                  embed_jquery=True,
                  embed_jquery_simulate=True,
-                 additional_js_files = None
+                 additional_js_files = None,
+                 jslib = "jq",
+                 download_directory = ".",
+                 user_agent = None,
+                 debug_stream = sys.stderr,
+                 event_looptime = 0.01 ,
+                 ignore_ssl_errors = True
                 ):
         """
         Init a Browser instance.
-
         @param qappargs: Arguments for QApplication constructor.
         @param debug_level: Debug level logging (L{ERROR} by default)
+        @param want_compat: set jquery compatiblity mode to "self.jslib"
+        @param jslib:  IF True: Use jQuery.noConflict to "jslib", else just use '$'
+        @param download_directory:  Directory where downloaded files will be stored.
+        @param user_agent User agent for requests (see QWebPage::userAgentForUrl for details)
+        @param event_looptime Event loop dispatcher loop delay (seconds).
+        @apram ignore_ssl_errors  If True, ignore SSL certificate errors.
+        @param debug_stream  File-like stream where debug output will be written.
+
+        Important vars:
+
+            - self.webpage: QwebPage object
+            - self.application : QApplication object
+            - self.webframe: active QWebFrame object
+            - self.manager: QNetworkAccessManager object
+            - self.files: represent a list of dicts tracking downloaded files where the download key 
+              is the path, each entry is in the form {'reply': replyobj, 'req': reqobj}
         """
+        self.download_directory = download_directory
         self.application = QApplication(qappargs or [])
-        """PyQt4.QtGui.Qapplication object."""
         self.want_compat = want_compat
         self.embed_jquery = embed_jquery
-        self.embed_jquery = embed_jquery_simulate
+        self.embed_jquery_simulate = embed_jquery_simulate
+        self.debug_stream = debug_stream
+        self.user_agent = user_agent
         self.additional_js_files = additional_js_files
-        self.additional_js = ""
+        self.additaional_js = ""
+        self.event_looptime = event_looptime 
+        self.ignore_ssl_errors = ignore_ssl_errors
         if not self.additional_js_files:
             self.additional_js_files = []
-        if not want_compat:
+        self.jslib = jslib
+        if not self.want_compat:
             self.jslib = '$'
-        if debug_level is not None:
-            self.debug_level = debug_level
+        self.debug_level = debug_level
         self.webpage = QWebPage()
         """PyQt4.QtWebKit.QWebPage object."""
         self.webpage.userAgentForUrl = self._user_agent_for_url
@@ -122,6 +126,7 @@ class Browser(object):
         """PyQt4.QtWebKit.QWebView object."""
         self._url_filter = None
         self._html_parser = None
+        self.files = []
 
         # Javascript
         directory = _first(self._javascript_directories, os.path.isdir)
@@ -130,6 +135,7 @@ class Browser(object):
                 self._javascript_directories)
         self.jquery = open(os.path.join(directory, self._jquery)).read()
         self.jquery_simulate = open(os.path.join(directory, self._jquery_simulate)).read()
+        self.additional_js = ''
         for fn in self.additional_js_files:
             if not os.path.exists(fn):
                 fn = os.path.join(directory, fn)
@@ -341,7 +347,7 @@ class Browser(object):
                 dict(self.files)[path]['finished'] = True
             self._debug(INFO, "Download finished: %s" % url)
         if path is not None:
-            self.files.append((path, {'reply':reply,'finished':False,})) 
+            self.files.append((path, {'reply':reply,'finished':False,}))
         reply.connect(reply, SIGNAL("readyRead()"), _on_ready_read)
         reply.connect(reply, SIGNAL("NetworkError()"), _on_network_error)
         reply.connect(reply, SIGNAL("finished()"), _on_finished)
@@ -414,8 +420,7 @@ class Browser(object):
     html = property(_get_html)
     """Rendered HTML in current page."""
 
-    #soup = property(_get_soup)
-    soup = None #change to none so that changes are retained through mulitple calls
+    soup = property(_get_soup)
     """HTML soup (see L{set_html_parser})."""
 
     #{ Basic interaction with browser
@@ -427,13 +432,13 @@ class Browser(object):
 
 
     def is_jquery_loaded(self):
-        return self.runjs('spynner_jquery_loaded;', debug=False).toString() == '1'
+        return self.runjs('typeof(spynner_jquery_loaded);', debug=False).toString() != 'undefined'
 
     def is_jquery_simulate_loaded(self):
-        return self.runjs('spynner_jquery_simulate_loaded;', debug=False).toString() == '1'
+        return self.runjs('typeof(spynner_jquery_simulate_loaded);', debug=False).toString() != 'undefined'
 
     def is_additional_js_loaded(self):
-        return self.runjs('spynner_additional_js_loaded;', debug=False).toString() == '1'
+        return self.runjs('typeof(spynner_additional_js_loaded);', debug=False).toString() != 'undefined'
 
     def load_jquery(self, force=False):
         """Load jquery in the current frame"""
@@ -460,7 +465,8 @@ class Browser(object):
     def load_additional_js(self, force=False):
         """Load jquery in the current frame"""
         if not self.is_additional_js_loaded():
-            self.runjs(self.additional_js, debug=False)
+            if len(self.additional_js.strip()) > 0:
+                self.runjs(self.additional_js, debug=False)
             self.runjs("var spynner_additional_js_loaded = 1 ;", debug=False)
 
     def wait_a_little(br, timeout):
