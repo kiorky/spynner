@@ -108,7 +108,7 @@ class Browser(object):
         self.debug_stream = debug_stream
         self.user_agent = user_agent
         self.additional_js_files = additional_js_files
-        self.additaional_js = ""
+        self.additional_js = ""
         self.event_looptime = event_looptime 
         self.ignore_ssl_errors = ignore_ssl_errors
         if not self.additional_js_files:
@@ -135,7 +135,6 @@ class Browser(object):
                 self._javascript_directories)
         self.jquery = open(os.path.join(directory, self._jquery)).read()
         self.jquery_simulate = open(os.path.join(directory, self._jquery_simulate)).read()
-        self.additional_js = ''
         for fn in self.additional_js_files:
             if not os.path.exists(fn):
                 fn = os.path.join(directory, fn)
