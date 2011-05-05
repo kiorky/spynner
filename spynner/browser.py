@@ -620,7 +620,7 @@ class Browser(object):
         where = QPoint(int(x), int(y))
         return where
 
-    def wk_click(self, selector, wait_load=False, wait_requests=None, timeout=None, offsetx = 0, offsety = 0):
+    def wk_click(self, selector, wait_load=False, wait_requests=None, timeout=None):
         """
         Click any clickable element in page by using raw javascript WebKit.click() method.
 
@@ -845,6 +845,11 @@ class Browser(object):
         escaped_value = value.replace("'", "\\'")
         jscode = "%s('%s').val('%s')" % (self.jslib, selector, escaped_value)
         self._runjs_on_jquery("fill", jscode)
+
+    def wk_fill(self, selector, value):
+        """Fill an input text with a string value using a WebKit selector and using the webkit webframe object."""
+        element = self.webframe.findFirstElement(selector)
+        element.evaluateJavaScript("this.value = '%s'" % value)
 
     def check(self, selector):
         """Check an input checkbox using a jQuery selector."""

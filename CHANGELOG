@@ -6,7 +6,7 @@
 * Add api methods to:
         - send raw keyboard keys
         - send qt raw mouse clicks
-        - use qtwebkit native JS click element
+        - use qtwebkit native JS click element & fill values
         - some helpers to wait for content
 * Add download files tracker
 
