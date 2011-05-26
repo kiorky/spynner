@@ -63,7 +63,7 @@ class Browser(object):
         os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
     _jquery = 'jquery-1.5.2.js'
-    _jquery_simulate = 'jquery.simulate.js' 
+    _jquery_simulate = 'jquery.simulate.js'
 
     def __init__(self,
                  qappargs=None,
@@ -97,7 +97,7 @@ class Browser(object):
             - self.application : QApplication object
             - self.webframe: active QWebFrame object
             - self.manager: QNetworkAccessManager object
-            - self.files: represent a list of dicts tracking downloaded files where the download key 
+            - self.files: represent a list of dicts tracking downloaded files where the download key
               is the path, each entry is in the form {'reply': replyobj, 'req': reqobj}
         """
         self.download_directory = download_directory
@@ -109,7 +109,7 @@ class Browser(object):
         self.user_agent = user_agent
         self.additional_js_files = additional_js_files
         self.additional_js = ""
-        self.event_looptime = event_looptime 
+        self.event_looptime = event_looptime
         self.ignore_ssl_errors = ignore_ssl_errors
         if not self.additional_js_files:
             self.additional_js_files = []
@@ -499,10 +499,8 @@ class Browser(object):
         @param selector: QtWebkit Selector
         @param keys to input in the QT way
         @param wait_load: If True, it will wait until a new page is loaded.
-        @param timeout: Seconds to wait for the page to load before
-                                       raising an exception.
-        @param wait_requests: How many requests to wait before returning. Useful
-                              for AJAX requests.
+        @param timeout: Seconds to wait for the page to load before raising an exception.
+        @param wait_requests: How many requests to wait before returning. Useful for AJAX requests.
 
         >>> br.sendKeys('#val_cel_dentifiant', 'fancy text')
         """
@@ -592,13 +590,19 @@ class Browser(object):
         self.webview.releaseMouse()
 
     def getRealPosition(self, point):
-        """Compute the coordinates by merging with the containing frame"""
+        """Compute the coordinates by merging with the containing frame.
+        @param point: (QPoint)
+        """
         rect = self.webframe.geometry()
         where = QPoint(rect.x() + point.x(), rect.y() + point.y())
         where = self.webview.mapToGlobal(where)
         return where
 
     def nativeClickAt(self, where, timeout):
+        """Click on an arbitrar location of the browser.
+        @param where: where to click (QPoint)
+        @timeout seconds: seconds to wait after click
+        """
         where = self.getRealPosition(where)
         eventp = QMouseEvent(QEvent.MouseButtonPress, where, Qt.LeftButton, Qt.NoButton, Qt.NoModifier);
         eventl = QMouseEvent(QEvent.MouseButtonRelease, where, Qt.LeftButton, Qt.NoButton, Qt.NoModifier);
@@ -769,10 +773,13 @@ class Browser(object):
 
     def close(self):
         """Close Browser instance and release resources."""
-        if self.webview:
-            self.destroy_webview()
+        if self.manager:
+            del self.manager
         if self.webpage:
             del self.webpage
+        if self.webview:
+            self.destroy_webview()
+        self.application.exit()
 
     #}
 
@@ -795,6 +802,8 @@ class Browser(object):
         """Destroy current QWebView."""
         if not self.webview:
             raise SpynnerError("Cannot destroy webview (not initialized)")
+        self.webview.close()
+
         del self.webview
 
     def show(self):

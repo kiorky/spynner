@@ -1,3 +1,5 @@
+CHANGELOG
+============
 0.0.4 (unreleased)
 -------------------
 * Fix download cookiesjar free problem [kiorky <kiorky@cryptelium.net>]
@@ -23,7 +25,7 @@
 * Implement image snapshots
 * Implement URL filters
 * Implement cookies setting
-  [<tokland@gmail.com]
+  [tokland <tokland@gmail.com>]
 
 
 0.0.2 (2009-07-27)
@@ -35,9 +37,9 @@
 * Instance variable to ignore SSL certificate errors
 * Start using epydoc format for API documentation
 * Add create_webview/destroy_webview for GUI debugging
-  [<tokland@gmail.com]
+  [tokland <tokland@gmail.com>]
 
 0.0.1 (2009-07-25)
 --------------------
-* Initial release.  [<tokland@gmail.com]
+* Initial release.  [tokland <tokland@gmail.com>]
 
