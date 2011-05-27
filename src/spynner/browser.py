@@ -781,6 +781,16 @@ class Browser(object):
             self.destroy_webview()
         self.application.exit()
 
+    def search_element_text(self, search_text, element='a', case_sensitive=False):
+        all_elements=self.webframe.findAllElements(element).toList()
+        result=[]
+        for e in all_elements:
+            text=e.toPlainText().__str__()
+            if not case_sensitive:
+                text=text.lower()
+            if search_text == text:
+                result.append(e)
+        return result
     #}
 
     #{ Webview
