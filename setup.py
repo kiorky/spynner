@@ -68,6 +68,7 @@ setup(
         read('CHANGES.txt')
         + '\n'
     ),
+    include_package_data=True,
     data_files = [
         ('share/doc/spynner/examples',
             ('examples/wordreference.py',
