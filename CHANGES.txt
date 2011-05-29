@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-1.1 (unreleased)
+1.1 (2011-05-29)
 ----------------
 
 - add Samples
