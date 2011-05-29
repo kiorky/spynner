@@ -30,6 +30,7 @@ import re
 import os
 from StringIO import StringIO
 
+import pkg_resources
 
 from PyQt4.QtCore import SIGNAL, QUrl, QString, Qt, QEvent
 from PyQt4.QtCore import QSize, QDateTime, QPoint
@@ -59,7 +60,7 @@ class Browser(object):
     errorCode = None
     errorMessage = None
     _javascript_directories = [
-        os.path.join(os.path.dirname(__file__), "../../javascript"),
+        pkg_resources.resource_filename('spynner', 'javascript'),
         os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
     _jquery = 'jquery-1.5.2.js'

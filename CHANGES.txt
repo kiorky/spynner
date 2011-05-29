@@ -3,13 +3,13 @@ CHANGELOG
 1.2 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Fix directory issue [kiorky]
 
 
 1.1 (2011-05-29)
 ----------------
 
-- add Samples
+- add Samples  [kiorky]
 
 
 1.0 (2011-05-29)
