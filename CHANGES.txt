@@ -1,59 +1,24 @@
 CHANGELOG
 ============
-1.8 (2011-05-29)
-----------------
-
-- bugfix
-
-
-1.6 (2011-05-29)
-----------------
-
-- Nothing changed yet.
-
-
-1.5 (2011-05-29)
+1.9 (2011-05-29)
 ----------------
 
 - Rework javascript load  [kiorky]
-
-
-1.4 (2011-05-29)
-----------------
-
 - Some try in native events [kiorky]
-
-1.3 (2011-05-29)
-----------------
-
-- proper release
-
-
-1.2 (2011-05-29)
-----------------
-
 - Fix directory issue [kiorky]
-
-
-1.1 (2011-05-29)
-----------------
-
 - add Samples  [kiorky]
-
-
-1.0 (2011-05-29)
-----------------
 - Fix download cookiesjar free problem [kiorky <kiorky@cryptelium.net>]
 - Allow download to be tracked for further reuse [kiorky <kiorky@cryptelium.net>]
 - Generate filenames by looking for their filename in response objects. [kiorky <kiorky@cryptelium.net>]
-- Add api methods to:
+- Add api methods to [:
 
         - send raw keyboard keys
         - send qt raw mouse clicks
         - use qtwebkit native JS click element & fill values
         - some helpers to wait for content
+  [kiorky]
 
-- Add download files tracker
+- Add download files tracker [kiorky]
 
 0.0.3 (2009-08-01)
 ------------------
