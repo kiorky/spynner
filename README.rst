@@ -33,6 +33,7 @@ Dependencies
 
   * `Python >=26 <http://www.python.org>`_
   * `PyQt > 443 <http://www.riverbankcomputing.co.uk/software/pyqt/download>`_
+  * Libxml2 / Libxslt libraries and includes files for lxml
 
 Feedback
 ==============
@@ -68,7 +69,7 @@ A basic example::
     browser.runjs("console.log('I can run Javascript')")
     browser.runjs("console.log('I can run jQuery: ' + jQuery('a:first').attr('href'))")
     browser.select("#esen")
-    browser.fill("input[name=enit]", "hola")
+    browser.wk_fill("input[name=enit]", "hola")
     browser.click("input[name=b]")
     browser.wait_page_load()
     print browser.url, browser.html
@@ -86,6 +87,12 @@ See more examples in the repository: https://github.com/kiorky/spynner/tree/mast
 Interact with the controls
 ============================
 - See the implementation docstrings or examples !
+- You have three levels of control:
+
+  - webkit methods which are recommended to us (wk_fill_*, wk_click_*) which are jquery based
+  - classical methods (fill, click_*) which are jquery based
+  - low level using QT raw events which are not that well  working ATM.
+    At least, you can move the mouse
 
 Running Javascript
 ====================

@@ -59,7 +59,7 @@ class Browser(object):
     errorCode = None
     errorMessage = None
     _javascript_directories = [
-        os.path.join(os.path.dirname(__file__), "../javascript"),
+        os.path.join(os.path.dirname(__file__), "../../javascript"),
         os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
     _jquery = 'jquery-1.5.2.js'
@@ -429,7 +429,6 @@ class Browser(object):
         self.webframe.load(QUrl(url))
         return self._wait_load()
 
-
     def is_jquery_loaded(self):
         return self.runjs('typeof(spynner_jquery_loaded);', debug=False).toString() != 'undefined'
 
@@ -442,7 +441,7 @@ class Browser(object):
     def load_jquery(self, force=False):
         """Load jquery in the current frame"""
         jscode = ''
-        if not self.is_jquery_loaded():
+        if not self.is_jquery_loaded() or force:
             if self.embed_jquery:
                 jscode += self.jquery
             if self.want_compat:
@@ -457,13 +456,13 @@ class Browser(object):
 
     def load_jquery_simulate(self, force=False):
         """Load jquery in the current frame"""
-        if not self.is_jquery_simulate_loaded():
+        if not self.is_jquery_simulate_loaded() or force:
             self.runjs(self.jquery_simulate, debug=False)
             self.runjs("var spynner_jquery_simulate_loaded = 1 ;", debug=False)
 
     def load_additional_js(self, force=False):
         """Load jquery in the current frame"""
-        if not self.is_additional_js_loaded():
+        if not self.is_additional_js_loaded() or force:
             if len(self.additional_js.strip()) > 0:
                 self.runjs(self.additional_js, debug=False)
             self.runjs("var spynner_additional_js_loaded = 1 ;", debug=False)
@@ -502,7 +501,7 @@ class Browser(object):
         @param timeout: Seconds to wait for the page to load before raising an exception.
         @param wait_requests: How many requests to wait before returning. Useful for AJAX requests.
 
-        >>> br.sendKeys('#val_cel_dentifiant', 'fancy text')
+        >>> br.sendText('#val_cel_dentifiant', 'fancy text')
         """
         element = self.webframe.findFirstElement(selector)
         element.setFocus()
@@ -598,37 +597,54 @@ class Browser(object):
         where = self.webview.mapToGlobal(where)
         return where
 
-    def nativeClickAt(self, where, timeout):
+    def nativeClickAt(self, where, timeout, real=False):
         """Click on an arbitrar location of the browser.
         @param where: where to click (QPoint)
+        @param real: if not true coordinates are relative to the window instead of the screen
         @timeout seconds: seconds to wait after click
         """
-        where = self.getRealPosition(where)
-        eventp = QMouseEvent(QEvent.MouseButtonPress, where, Qt.LeftButton, Qt.NoButton, Qt.NoModifier);
-        eventl = QMouseEvent(QEvent.MouseButtonRelease, where, Qt.LeftButton, Qt.NoButton, Qt.NoModifier);
+        if not real:
+            where = self.getRealPosition(where)
         self.webview.grabMouse()
         self.moveMouse(where, real=True)
-        self.application.sendEvent(self.webview, eventp)
-        self.application.sendEvent(self.webview, eventl)
+        eventp = QMouseEvent(QEvent.MouseButtonPress,   where, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        eventl = QMouseEvent(QEvent.MouseButtonRelease, where, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier) 
+        self.application.sendEvent(self.application.focusWidget(), eventp)
+        self.application.sendEvent(self.application.focusWidget(), eventl) 
         self._events_loop(timeout)
         self._events_loop(timeout)
         self.webview.releaseMouse()
 
     def getPosition(self, selector):
-        jscode = "off = %s('%s').offset();off.left+','+off.top" % (self.jslib, selector)
+        """Get the position QPoint(x,y) of a css selector.
+        @param selector: The css Selector to query against
+        """
+        jscode = "off = %s('%s').offset(); off.left+','+off.top" % (self.jslib, selector)
         self._replies = 0
         try:
-            x, y = ("%s"%self.runjs(jscode, debug=False).toString()).split(',')
+            x, y = ("%s" % self.runjs(jscode, debug=False).toString()).split(',')
+            twhere = QPoint(int(x), int(y))
+            where = self.webview.mapToGlobal(twhere)
+            if where == twhere:
+                where = self.webview.mapToGlobal(where)
         except Exception, e:
-           raise  SpynnerError('Cant find %s (%s)' % (selector, e))
-        where = QPoint(int(x), int(y))
+            #try also using qt
+            try:
+                item = self.webframe.findFirstElement(selector)
+                geo = item.geometry()
+                twhere = geo.topLeft()
+                where = self.webview.mapToGlobal(twhere)
+                if where == twhere:
+                    where = self.webview.mapToGlobal(where) 
+            except:
+                raise  SpynnerError('Cant find %s (%s)' % (selector, e))
         return where
 
-    def wk_click(self, selector, wait_load=False, wait_requests=None, timeout=None):
+    def wk_click_element(self, element, wait_load=False, wait_requests=None, timeout=None):
         """
-        Click any clickable element in page by using raw javascript WebKit.click() method.
+        Click on an element by using raw javascript WebKit.click() method.
 
-        @param selector: WebKit selector.
+        @param element: QWebElement object
         @param wait_load: If True, it will wait until a new page is loaded.
         @param timeout: Seconds to wait for the page to load before
                                        raising an exception.
@@ -647,21 +663,70 @@ class Browser(object):
         I{http://server.org/dir1/dir2/file.ext} will be saved to
         L{download_directory}/I{server.org/dir1/dir2/file.ext}.
         """
-        element = self.webframe.findFirstElement(selector)
-        element.evaluateJavaScript("this.click()")
+        #element.evaluateJavaScript("this.click()")
+        jscode = (
+            "var e = document.createEvent('MouseEvents');"
+            "e.initEvent( 'click', true, true );"
+            "this.dispatchEvent(e);"
+        )
+        element.evaluateJavaScript(jscode)
         time.sleep(0.5)
         self.wait_requests(wait_requests)
         if wait_load:
             return self._wait_load(timeout)
 
+    def wk_click_element_link(self, element, timeout=None):
+        """Click a link and wait for the page to load.
+        @param selector: WebKit xpath selector to an element
+        @param: timeout timeout to wait in seconds
+        """
+        return self.wk_click_element(element, wait_load=True, timeout=timeout)
+
+    def wk_click_element_ajax(self, element, wait_requests=1, timeout=None):
+        """Click a AJAX link and wait for the request to finish.
+        @param selector: WebKit xpath selector to an element
+        @param wait_requests: How many requests to wait before returning. Useful
+                              for AJAX requests.
+        @param: timeout timeout to wait in seconds
+        """
+        return self.wk_click_element(element, wait_requests=wait_requests, timeout=timeout)
+
+    def wk_click(self, selector, wait_load=False, wait_requests=None, timeout=None):
+        """
+        Select an element with a CSS2 selector and then click by using raw javascript WebKit.click() method.
+        See the wk_click_element functions for additional documentation
+
+        @param selector: WebKit selector.
+        @param wait_load: If True, it will wait until a new page is loaded.
+        @param timeout: Seconds to wait for the page to load before
+                                       raising an exception.
+        @param wait_requests: How many requests to wait before returning. Useful
+                              for AJAX requests.
+        """
+        element = self.webframe.findFirstElement(selector)
+        return self.wk_click_element(element, wait_load=wait_load, wait_requests=wait_requests, timeout=timeout)
+
     def wk_click_link(self, selector, timeout=None):
-        """Click a link and wait for the page to load."""
-        return self.wk_click(selector, wait_load=True, timeout=timeout)
+        """Click a link and wait for the page to load.
+        See the wk_click_element_link functions for additional documentation
+        @param selector: WebKit xpath selector to an element
+        @param: timeout timeout to wait in seconds
+        """
+        element = self.webframe.findFirstElement(selector)
+        return self.wk_click_element_link(element, timeout=timeout)
 
     def wk_click_ajax(self, selector, wait_requests=1, timeout=None):
-        """Click a AJAX link and wait for the request to finish."""
-        return self.wk_click(selector, wait_requests=wait_requests, timeout=timeout)
+        """Click a AJAX link and wait for the request to finish.
+        See the wk_click_element_ajax functions for additional documentation
+        @param selector: WebKit xpath selector to an element
+        @param wait_requests: How many requests to wait before returning. Useful
+                              for AJAX requests.
+        @param: timeout timeout to wait in seconds
+        """
+        element = self.webframe.findFirstElement(selector)
+        return self.wk_click_element_ajax(element, wait_requests=wait_requests, timeout=timeout)
 
+    # XXX: TODO: this method do not work by now, event seems not posted, strange
     def native_click(self, selector, wait_load=False, wait_requests=None, timeout=None, offsetx = 0, offsety = 0):
         """
         Click any clickable element in page by sending a raw QT mouse event.
@@ -673,32 +738,40 @@ class Browser(object):
         @param wait_requests: How many requests to wait before returning. Useful
                               for AJAX requests.
 
-        By default this method will not wait for a page to load.
-        If you are clicking a link or submit button, you must call this
-        method with C{wait_load=True} or, alternatively, call
-        L{wait_load} afterwards. However, the recommended way it to use
-        L{click_link}.
-
-        When a non-HTML file is clicked this method will download it. The
-        file is automatically saved keeping the original structure (as
-        wget --recursive does). For example, a file with URL
-        I{http://server.org/dir1/dir2/file.ext} will be saved to
-        L{download_directory}/I{server.org/dir1/dir2/file.ext}.
+        @param offsetx: offset to click on the widget to the top left of it on the X axis (left to right)
+        @param offsety: offset to click on the widget to the top left of it on the Y axix (top to bottom)
         """
         where = self.getPosition(selector)
-        where = QPoint(where.x() + offsetx , where.y() + offsety)
-        self.nativeClickAt(where, timeout)
+        item = self.webframe.findFirstElement(selector)
+        item.setFocus()
+        import pdb;pdb.set_trace()  ## Breakpoint ##
+        where = QPoint(where.x() + offsetx, where.y() + offsety)
+        self.nativeClickAt(where, timeout, real=True)
         self.wait_requests(wait_requests)
         if wait_load:
             return self._wait_load(timeout)
 
-    def native_click_link(self, selector, timeout=None):
-        """Click a link and wait for the page to load."""
-        return self.native_click(selector, wait_load=True, timeout=timeout)
+    # XXX: TODO: this method do not work by now, event seems not posted, strange
+    def native_click_link(self, selector, timeout=None, offsetx = 0, offsety = 0):
+        """Click a link and wait for the page to load using a real mouse event.
+        @param selector: jQuery selector.
+        @param timeout: Seconds to wait for the page to load before
+                        raising an exception.
+        @param offsetx: offset to click on the widget to the top left of it on the X axis (left to right)
+        @param offsety: offset to click on the widget to the top left of it on the Y axix (top to bottom)
+        """
+        return self.native_click(selector, wait_load=True, timeout=timeout, offsetx=offsetx, offsety=offsety)
 
-    def native_click_ajax(self, selector, wait_requests=1, timeout=None):
-        """Click a AJAX link and wait for the request to finish."""
-        return self.native_click(selector, wait_requests=wait_requests, timeout=timeout)
+    # XXX: TODO: this method do not work by now, event seems not posted, strange
+    def native_click_ajax(self, selector, wait_requests=1, timeout=None, offsetx = 0, offsety = 0):
+        """Click a AJAX link using a raw mouse click and wait for the request to finish.
+        @param selector: jQuery selector.
+        @param timeout: Seconds to wait for the page to load before
+                        raising an exception.
+        @param offsetx: offset to click on the widget to the top left of it on the X axis (left to right)
+        @param offsety: offset to click on the widget to the top left of it on the Y axix (top to bottom)
+        """
+        return self.native_click(selector, wait_requests=wait_requests, timeout=timeout, offsetx=offsetx, offsety=offsety)
 
     def wait_load(self, timeout=None):
         """

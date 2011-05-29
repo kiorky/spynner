@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-0.0.4 (unreleased)
+1.0 (unreleased)
 -------------------
 * Fix download cookiesjar free problem [kiorky <kiorky@cryptelium.net>]
 * Allow download to be tracked for further reuse [kiorky <kiorky@cryptelium.net>]
