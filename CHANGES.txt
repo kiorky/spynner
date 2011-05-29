@@ -1,7 +1,7 @@
 CHANGELOG
 ============
-1.7 (unreleased)
-----------------
+* (2011-05-29)
+--------------
 
 - Nothing changed yet.
 
