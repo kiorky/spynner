@@ -1,5 +1,11 @@
 CHANGELOG
 ============
+1.1 (unreleased)
+----------------
+
+- Nothing changed yet.
+
+
 1.0 (2011-05-29)
 ----------------
 * Fix download cookiesjar free problem [kiorky <kiorky@cryptelium.net>]
