@@ -18,7 +18,7 @@ from setuptools import setup, find_packages
 import os
 from distutils.cmd import Command
 
-version = '1.3dev'
+version = '1.3'
 url = "https://github.com/kiorky/spynner"
 
 class gen_doc(Command):
@@ -70,10 +70,13 @@ setup(
     ),
     data_files = [
         ('share/doc/spynner/examples',
-            ('examples/wordreference.py',)),
+            'examples/wordreference.py',
+            'examples/webkit_methods.py',
+            'examples/native_events.py',
+            'examples/google.py',),
         ('share/spynner/javascript',
-            ('javascript/jquery.min.js',
-             'javascript/jquery.simulate.js')),
+            ('src/spynner/javascript/jquery.min.js',
+             'src/spynner/javascript/jquery.simulate.js')),
     ],
     classifiers = [
         'Development Status :: 3 - Alpha',
