@@ -855,6 +855,30 @@ class Browser(object):
             self.destroy_webview()
         self.application.exit()
 
+    def search_element_text(self, search_text, element='a', case_sensitive=False, match_exactly=True):
+        """
+        Search all elements on a page for the specified text, returns a list of elements that contain it.
+        
+        @param search_text: The text to search for.
+        @param element: The type of element to search, defaults to anchor tag.
+        @param case_sensitive: If true the search will be case sensitive.
+        @param match_exactly: If true will match the element's content exactly.
+        @return: A list of elements
+        """
+        if not case_sensitive:
+            search_text=search_text.lower()
+        all_elements=self.webframe.findAllElements(element).toList()
+        result=[]
+        for e in all_elements:
+            text=e.toPlainText().__str__()
+            if not case_sensitive:
+                text=text.lower()
+            if match_exactly is True and search_text == text:
+                result.append(e)
+            elif match_exactly is False and search_text in text:
+                result.append(e)
+        return result
+    
     #}
 
     #{ Webview
