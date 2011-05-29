@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-1.2 (unreleased)
+1.2 (2011-05-29)
 ----------------
 
 - Fix directory issue [kiorky]
