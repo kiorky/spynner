@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-1.5 (unreleased)
+1.5 (2011-05-29)
 ----------------
 
 - Rework javascript load  [kiorky]

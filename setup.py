@@ -18,7 +18,7 @@ from setuptools import setup, find_packages
 import os
 from distutils.cmd import Command
 
-version = '1.5dev'
+version = '1.5'
 url = "https://github.com/kiorky/spynner"
 
 class gen_doc(Command):
