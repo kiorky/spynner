@@ -61,7 +61,6 @@ class Browser(object):
     errorMessage = None
     _javascript_directories = [
         pkg_resources.resource_filename('spynner', 'javascript'),
-        os.path.join(sys.prefix, "share/spynner/javascript"),
     ]
     _jquery = 'jquery-1.5.2.js'
     _jquery_simulate = 'jquery.simulate.js'

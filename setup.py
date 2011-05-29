@@ -74,9 +74,9 @@ setup(
             'examples/webkit_methods.py',
             'examples/native_events.py',
             'examples/google.py',)),
-        ('share/spynner/javascript',
-            ('src/spynner/javascript/jquery.min.js',
-             'src/spynner/javascript/jquery.simulate.js')),
+        #('share/spynner/javascript',
+        #    ('src/spynner/javascript/jquery.min.js',
+        #     'src/spynner/javascript/jquery.simulate.js')),
     ],
     classifiers = [
         'Development Status :: 3 - Alpha',
