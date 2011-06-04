@@ -16,7 +16,7 @@ CHANGELOG
 - Fix download cookiesjar free problem [kiorky <kiorky@cryptelium.net>]
 - Allow download to be tracked for further reuse [kiorky <kiorky@cryptelium.net>]
 - Generate filenames by looking for their filename in response objects. [kiorky <kiorky@cryptelium.net>]
-- Add api methods to [:
+- Add api methods to:
 
         - send raw keyboard keys
         - send qt raw mouse clicks
