@@ -22,6 +22,7 @@ CHANGELOG
         - send qt raw mouse clicks
         - use qtwebkit native JS click element & fill values
         - some helpers to wait for content
+
   [kiorky]
 
 - Add download files tracker [kiorky]
