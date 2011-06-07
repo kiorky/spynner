@@ -3,7 +3,7 @@ CHANGELOG
 1.10 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- add wk_check/_unckeck methods
 
 
 1.9 (2011-05-29)

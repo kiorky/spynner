@@ -957,6 +957,26 @@ class Browser(object):
         element = self.webframe.findFirstElement(selector)
         element.evaluateJavaScript("this.value = '%s'" % value)
 
+    def wk_check_elem(self, element):
+        """check an input checkbox using a webkit element."""
+        jscode = "this.checked=true;" 
+        element.evaluateJavaScript(jscode)
+
+    def wk_uncheck_elem(self, element):
+        """uncheck input checkbox using a Webkit element"""
+        jscode = "this.checked=false;" 
+        element.evaluateJavaScript(jscode)
+ 
+    def wk_check(self, selector):
+        """check an input checkbox using a css selector."""
+        element = self.webframe.findFirstElement(selector)
+        return self.wk_check_elem(element)
+
+    def wk_uncheck(self, selector):
+        """uncheck input checkbox using a css selector"""
+        element = self.webframe.findFirstElement(selector)
+        return self.wk_uncheck_elem(element)
+
     def check(self, selector):
         """Check an input checkbox using a jQuery selector."""
         jscode = "%s('%s').attr('checked', true)" % (self.jslib, selector)
@@ -977,6 +997,31 @@ class Browser(object):
         """Choose a option in a select using a jQuery selector."""
         jscode = "%s('%s').attr('selected', 'selected')" % (self.jslib, selector)
         self._runjs_on_jquery("select", jscode)
+
+    # TODO: finish to implement
+    #def wk_select_elem(self, element, values):
+    #    """Choose a option in a select using  WebKit API.
+    #    @param element: webkit WebElemement
+    #    """
+    #    for value in values:
+    #        element.evaluateJavaScript(
+    #            "for(var i=0; i < document.formname.dropdownboxname.length; i++) {"
+    #            'if (document.formname.dropdownboxname[i].value == "value") {'
+    #            'document.formname.dropdownboxname[i].selected = true;'
+    #            '}'
+    #            '}'
+    #        )
+    #    jscode = "%s('%s').attr('selected', 'selected')" % (self.jslib, selector)
+    #    self._runjs_on_jquery("select", jscode) 
+
+    #def wk_select(self, selector, values):
+    #    """Choose a option in a select using  WebKit API.
+    #    @param selector: css selector to get the select item.
+    #    @param value: list of values to set pass a [value] for a single value.
+    #    """
+    #    element = self.webframe.findFirstElement(selector)
+    #    return self.wk_select_elem(element, values)
+
 
     submit = click_link
 
