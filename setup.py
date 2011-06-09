@@ -19,7 +19,7 @@ import os
 from distutils.cmd import Command
 
 version = '1.11dev'
-url = "https://github.com/kiorky/spynner"
+url = "https://github.com/makinacorpus/spynner"
 
 class gen_doc(Command):
     """Generate the HTML API documentation using epydoc
