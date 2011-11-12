@@ -28,6 +28,8 @@ Authors
 Contributors
 -----------------
 
+- Leo Lou <https://github.com/l4u> 
+
 Dependencies
 ===================
 
