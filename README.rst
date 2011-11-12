@@ -47,7 +47,7 @@ Install
 
 * The bleeding edge version is hosted on github::
 
-    git clone http://spynner.googlecode.com/svn/trunk/ spynner
+    git clone https://github.com/makinacorpus/spynner.git 
     cd spynner
     python setup.py install
 
