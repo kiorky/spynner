@@ -71,7 +71,7 @@ A basic example::
     browser.select("#esen")
     browser.wk_fill("input[name=enit]", "hola")
     browser.click("input[name=b]")
-    browser.wait_page_load()
+    browser.wait_load()
     print browser.url, browser.html
     browser.close()
 
