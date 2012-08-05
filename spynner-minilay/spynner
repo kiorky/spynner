@@ -1,0 +1,9 @@
+[minibuild]
+dependencies=git-1.7 py-libxml2-2.7 py-libxslt-1.1 libxml2-2.7 libxslt-1.1 libiconv-1.12 tesseract-3 leptonica-1 swiglib-1.3 pyqt-4 sip-4 python-2.7
+install_method=buildout
+src_uri=ssh://git@github.com/makinacorpus/spynner.git
+src_type=git
+category=zope
+homepage=http://www.makina-corpus.com
+description=
+buildout_config=minitage.buildout-dev.cfg

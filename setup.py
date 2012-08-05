@@ -65,10 +65,15 @@ setup(
     long_description = (
         read('README.rst')
         + '\n' +
-        read('CHANGES.txt')
+        read('src/spynner/tests/spynner.rst')
+        + '\n' +
+        read('CHANGES.rst')
         + '\n'
     ),
     include_package_data=True,
+    extras_require = {
+        'test': ['ipython', 'plone.testing']
+    }, 
     data_files = [
         ('share/doc/spynner/examples',
             ('examples/wordreference.py',

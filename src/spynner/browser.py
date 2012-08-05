@@ -40,22 +40,16 @@ from PyQt4.QtNetwork import QNetworkCookie, QNetworkAccessManager
 from PyQt4.QtNetwork import QNetworkCookieJar, QNetworkRequest, QNetworkProxy
 from PyQt4.QtWebKit import QWebPage, QWebView
 
+
+SpynnerQapplication = None
+
 # Debug levels
 ERROR, WARNING, INFO, DEBUG = range(4)
+argv = ['dummy']
 
 class Browser(object):
     """
     Stateful programmatic web browser class based upon QtWebKit.
-
-    >>> browser = Browser()
-    >>> browser.load("http://www.wordreference.com")
-    >>> browser.runjs("console.log('I can run Javascript!')")
-    >>> browser.runjs("_jQuery('div').css('border', 'solid red')") # and jQuery!
-    >>> browser.select("#esen")
-    >>> browser.fill("input[name=enit]", "hola")
-    >>> browser.click("input[name=b]", wait_load=True)
-    >>> print browser.url, len(browser.html)
-    >>> browser.close()
     """
     errorCode = None
     errorMessage = None
@@ -68,11 +62,11 @@ class Browser(object):
     def __init__(self,
                  qappargs=None,
                  debug_level=ERROR,
-                 want_compat=True,
-                 embed_jquery=True,
-                 embed_jquery_simulate=True,
+                 want_compat=False,
+                 embed_jquery=False,
+                 embed_jquery_simulate=False,
                  additional_js_files = None,
-                 jslib = "jq",
+                 jslib = None,
                  download_directory = ".",
                  user_agent = None,
                  debug_stream = sys.stderr,
@@ -101,7 +95,10 @@ class Browser(object):
               is the path, each entry is in the form {'reply': replyobj, 'req': reqobj}
         """
         self.download_directory = download_directory
-        self.application = QApplication(qappargs or [])
+        import spynner
+        if not spynner.SpynnerQapplication:
+            spynner.SpynnerQapplication = QApplication(spynner.argv)
+        self.application = spynner.SpynnerQapplication
         self.want_compat = want_compat
         self.embed_jquery = embed_jquery
         self.embed_jquery_simulate = embed_jquery_simulate
@@ -111,13 +108,18 @@ class Browser(object):
         self.additional_js = ""
         self.event_looptime = event_looptime
         self.ignore_ssl_errors = ignore_ssl_errors
+        self.webpage = QWebPage()
         if not self.additional_js_files:
             self.additional_js_files = []
         self.jslib = jslib
         if not self.want_compat:
-            self.jslib = '$'
+            if jslib is None:
+                self.jslib = '$'
+            else:
+                self.jslib = jslib
+        else:
+            self.jslib = 'spynnerjq'
         self.debug_level = debug_level
-        self.webpage = QWebPage()
         """PyQt4.QtWebKit.QWebPage object."""
         self.webpage.userAgentForUrl = self._user_agent_for_url
         self.webframe = self.webpage.mainFrame()
@@ -127,7 +129,6 @@ class Browser(object):
         self._url_filter = None
         self._html_parser = None
         self.files = []
-
         # Javascript
         directory = _first(self._javascript_directories, os.path.isdir)
         if not directory:
@@ -139,7 +140,6 @@ class Browser(object):
             if not os.path.exists(fn):
                 fn = os.path.join(directory, fn)
             self.additional_js += "\n%s" % open(fn).read()
-
         self.webpage.javaScriptAlert = self._javascript_alert
         self.webpage.javaScriptConsoleMessage = self._javascript_console_message
         self.webpage.javaScriptConfirm = self._javascript_confirm
@@ -297,7 +297,8 @@ class Browser(object):
         self.webview = None
 
     def _on_load_finished(self, successful):
-        self.webframe = self.webpage.mainFrame()
+        if getattr(self, 'webpage', None):
+            self.webframe = self.webpage.mainFrame()
         self._load_status = successful
         status = {True: "successful", False: "error"}[successful]
         self._debug(INFO, "Page load finished (%d bytes): %s (%s)" %
@@ -388,7 +389,10 @@ class Browser(object):
         lenfield = QString(u'length')
         if lenfield not in resmap:
             return False
-        return resmap[lenfield].toInt()[0]
+        if resmap[lenfield].type() == resmap[lenfield].Double:
+            return int(resmap[lenfield].toDouble()[0])
+        else:
+            return resmap[lenfield].toInt()[0]
 
     def jslen(self, selector):
         res = self.runjs("%s('%s')" % (self.jslib, selector))
@@ -396,7 +400,7 @@ class Browser(object):
 
     def _runjs_on_jquery(self, name, code):
         res = self.runjs(code)
-        if self.get_js_obj_length(res) < 1:
+        if not isinstance(self.get_js_obj_length(res), int):
             raise SpynnerJavascriptError("error on %s: %s" % (name, code))
         return res
 
@@ -424,10 +428,38 @@ class Browser(object):
 
     #{ Basic interaction with browser
 
-    def load(self, url):
-        """Load a web page and return status (a boolean)."""
+    def load(self, 
+             url, 
+             load_timeout=10,
+             wait_callback = None,
+             tries=None,
+            ):
+        """Load a web page and return status (a boolean).
+        @param url url to open
+        @param load_timeout timeout to load the page, or if you use wait_callback, time between retries
+        @param wait_callback a callback to test if content is ready
+        @param tries set to True for unlimited retries, to int for limited to tries, tries.
+
+        eg:
+
+            Open google
+
+            >>> br.load('http://www.google.fr')
+
+            Same thing except we will try to see if there is 'google' in the html, 
+            thus with 3 wills at 10 seconds of interval
+
+            >>> def wait_load(b):
+            ...     return 'google' in b.html.lower()
+            >>> br.load('http://www.google.fr', wait_callback=wait_load, tries=3)
+
+
+        """
         self.webframe.load(QUrl(url))
-        return self._wait_load()
+        if wait_callback is None:
+            return self._wait_load(timeout = load_timeout)
+        else:
+            return self.wait_for_content(wait_callback, tries=tries, delay=load_timeout)
 
     def is_jquery_loaded(self):
         return self.runjs('typeof(spynner_jquery_loaded);', debug=False).toString() != 'undefined'
@@ -441,13 +473,13 @@ class Browser(object):
     def load_jquery(self, force=False):
         """Load jquery in the current frame"""
         jscode = ''
-        if not self.is_jquery_loaded() or force:
-            if self.embed_jquery:
+        if self.embed_jquery or force:
+            if not self.is_jquery_loaded():
                 jscode += self.jquery
-            if self.want_compat:
-                jscode += "\nvar %s = jQuery.noConflict();" % self.jslib
-            jscode += "var spynner_jquery_loaded = 1 ;"
-            self.runjs(jscode, debug=False)
+                if self.want_compat:
+                    jscode += "\nvar %s = jQuery.noConflict();" % self.jslib
+                jscode += "var spynner_jquery_loaded = 1 ;"
+                self.runjs(jscode, debug=False)
 
     def load_js(self):
         self.load_jquery()
@@ -455,10 +487,11 @@ class Browser(object):
         self.load_additional_js()
 
     def load_jquery_simulate(self, force=False):
-        """Load jquery in the current frame"""
-        if not self.is_jquery_simulate_loaded() or force:
-            self.runjs(self.jquery_simulate, debug=False)
-            self.runjs("var spynner_jquery_simulate_loaded = 1 ;", debug=False)
+        """Load jquery simulate in the current frame"""
+        if self.embed_jquery_simulate or force:
+            if not self.is_jquery_simulate_loaded():
+                self.runjs(self.jquery_simulate, debug=False)
+                self.runjs("var spynner_jquery_simulate_loaded = 1 ;", debug=False)
 
     def load_additional_js(self, force=False):
         """Load jquery in the current frame"""
@@ -561,6 +594,11 @@ class Browser(object):
         I{http://server.org/dir1/dir2/file.ext} will be saved to
         L{download_directory}/I{server.org/dir1/dir2/file.ext}.
         """
+        if not self.embed_jquery_simulate:
+            return self.wk_click(selector,
+                                 wait_load=wait_load,
+                                 wait_requests=wait_requests,
+                                 timeout=timeout)
         jscode = "%s('%s').simulate('click');" % (self.jslib, selector)
         self._replies = 0
         self._runjs_on_jquery("click", jscode)
@@ -608,9 +646,9 @@ class Browser(object):
         self.webview.grabMouse()
         self.moveMouse(where, real=True)
         eventp = QMouseEvent(QEvent.MouseButtonPress,   where, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
-        eventl = QMouseEvent(QEvent.MouseButtonRelease, where, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier) 
+        eventl = QMouseEvent(QEvent.MouseButtonRelease, where, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
         self.application.sendEvent(self.application.focusWidget(), eventp)
-        self.application.sendEvent(self.application.focusWidget(), eventl) 
+        self.application.sendEvent(self.application.focusWidget(), eventl)
         self._events_loop(timeout)
         self._events_loop(timeout)
         self.webview.releaseMouse()
@@ -635,7 +673,7 @@ class Browser(object):
                 twhere = geo.topLeft()
                 where = self.webview.mapToGlobal(twhere)
                 if where == twhere:
-                    where = self.webview.mapToGlobal(where) 
+                    where = self.webview.mapToGlobal(where)
             except:
                 raise  SpynnerError('Cant find %s (%s)' % (selector, e))
         return where
@@ -806,7 +844,7 @@ class Browser(object):
         if not tries:
             tries = True
         while bool(tries) and not found:
-            if isinstance(tries, int):
+            if isinstance(tries, int) and not isinstance(tries, bool):
                 if tries > 0:
                     tries -= 1
             if callback(self):
@@ -815,16 +853,21 @@ class Browser(object):
                 if not loaded:
                     try:
                         loaded = self._wait_load(timeout=delay)
-                        self._debug(DEBUG, 'content loaded, waiting for content to mach the callback')
+                        self._debug(DEBUG, 'SPYNNER waitload: content loaded, waiting for content to mach the callback')
                     except SpynnerTimeout, e:
-                        self._debug(DEBUG, 'content not loaded, fallback by waiting')
+                        self._debug(DEBUG, 'SPYNNER waitload: content not loaded, fallback by waiting')
                 else:
+                    self._debug(DEBUG, 'SPYNNER waitload: content loaded, waiting for content to mach the callback')
                     time.sleep(delay)
         if not found:
-            msg = u"Timeout reached: %d retries for %s delay." % (tries, delay)
+            if not isinstance(ref_tries, int):
+                ref_tries = 'unlimited'
+            msg = u"SPYNNER waitload: Timeout reached: %d retries for %ss delay." % (ref_tries, delay)
             if error_message:
                 msg += u'\n%s' % error_message
             raise SpynnerTimeout(msg)
+        else:
+            self._debug(DEBUG, 'SPYNNER waitload: The callback found what it was waiting for in its contents!')
         load_status = self._load_status
         self._load_status = None
         return load_status
@@ -856,7 +899,7 @@ class Browser(object):
     def search_element_text(self, search_text, element='a', case_sensitive=False, match_exactly=True):
         """
         Search all elements on a page for the specified text, returns a list of elements that contain it.
-        
+
         @param search_text: The text to search for.
         @param element: The type of element to search, defaults to anchor tag.
         @param case_sensitive: If true the search will be case sensitive.
@@ -876,48 +919,51 @@ class Browser(object):
             elif match_exactly is False and search_text in text:
                 result.append(e)
         return result
-    
+
     #}
 
     #{ Webview
 
     def create_webview(self, show=False):
         """Create a QWebView object and insert current QWebPage."""
-        if self.webview:
-            raise SpynnerError("Cannot create webview (already initialized)")
+        if self.webview is not None: return
         self.webview = QWebView()
         self.webview.setPage(self.webpage)
         window = self.webview.window()
         window.setAttribute(Qt.WA_DeleteOnClose)
-        window.connect(window, SIGNAL('destroyed(QObject *)'),
+        window.connect(
+            window, SIGNAL('destroyed(QObject *)'),
             self._on_webview_destroyed)
         if show:
             self.show()
+        else:
+            self.hide()
 
     def destroy_webview(self):
         """Destroy current QWebView."""
         if not self.webview:
-            raise SpynnerError("Cannot destroy webview (not initialized)")
+            return
         self.webview.close()
-
         del self.webview
 
-    def show(self):
+    def show(self, maximized=True):
         """Show webview browser."""
-        if not self.webview:
-            raise SpynnerError("Webview is not initialized")
+        self.create_webview(show=False)
         self.webview.show()
+        if maximized:
+            self.webview.setWindowState(Qt.WindowMaximized) 
 
     def hide(self):
         """Hide webview browser."""
-        if not self.webview:
-            raise SpynnerError("Webview is not initialized")
-        self.webview.hide()
+        if self.webview is not None:
+            self.webview.hide()
+        else:
+            self._debug(DEBUG, "Webview is not initialized")
 
     def browse(self):
         """Let the user browse the current page (infinite loop)."""
-        if not self.webview:
-            raise SpynnerError("Webview is not initialized")
+        if self.webview is None:
+            self.create_webview()
         self.show()
         while self.webview:
             self._events_loop()
@@ -958,68 +1004,131 @@ class Browser(object):
 
     def wk_check_elem(self, element):
         """check an input checkbox using a webkit element."""
-        jscode = "this.checked=true;" 
-        element.evaluateJavaScript(jscode)
+        jscode = "this.checked=true;"
+        if not isinstance(element, list):
+            element = [element]
+        for e in element:
+            e.evaluateJavaScript(jscode)
 
     def wk_uncheck_elem(self, element):
         """uncheck input checkbox using a Webkit element"""
-        jscode = "this.checked=false;" 
-        element.evaluateJavaScript(jscode)
- 
+        jscode = "this.checked=false;"
+        if not isinstance(element, list):
+            element = [element]
+        for e in element:
+            e.evaluateJavaScript(jscode)
+
     def wk_check(self, selector):
         """check an input checkbox using a css selector."""
-        element = self.webframe.findFirstElement(selector)
-        return self.wk_check_elem(element)
+        if not isinstance(selector, list):
+            selector = [selector]
+        elems = []
+        for s in selector:
+            es = self.webframe.findAllElements(s).toList()
+            elems.extend(es)
+        return self.wk_check_elem(elems)
 
     def wk_uncheck(self, selector):
         """uncheck input checkbox using a css selector"""
-        element = self.webframe.findFirstElement(selector)
-        return self.wk_uncheck_elem(element)
+        if not isinstance(selector, list):
+            selector = [selector]
+        elems = []
+        for s in selector:
+            es = self.webframe.findAllElements(s).toList()
+            elems.extend(es)
+        return self.wk_uncheck_elem(elems)
 
     def check(self, selector):
         """Check an input checkbox using a jQuery selector."""
-        jscode = "%s('%s').attr('checked', true)" % (self.jslib, selector)
-        self._runjs_on_jquery("check", jscode)
+        if not isinstance(selector, list):
+            selector = [selector]
+        for s in selector:
+            jscode = "%s('%s').attr('checked', true)" % (self.jslib, s)
+            self._runjs_on_jquery("check", jscode)
 
     def uncheck(self, selector):
         """Uncheck input checkbox using a jQuery selector"""
-        jscode = "%s('%s').attr('checked', false)" % (self.jslib, selector)
-        self._runjs_on_jquery("uncheck", jscode)
+        if not isinstance(selector, list):
+            selector = [selector]
+        for s in selector:
+            jscode = "%s('%s').attr('checked', false)" % (self.jslib, s)
+            self._runjs_on_jquery("uncheck", jscode)
 
-    def choose(self, selector, value):
-        """Choose a radio input using a jQuery selector."""
-        escaped_value = value.replace("'", "\\'")
-        jscode = "%s('%s').filter('[value=%s]').simulate('click')" % (self.jslib, selector, escaped_value)
-        self._runjs_on_jquery("choose", jscode)
+    def radio(self, selector):
+        """Choose a radio button a jQuery selector.
+        Selector can be a single selector of a list of selectors
+        """
+        if not isinstance(selector, list):
+            selector = [selector]
+        jscode = ''
+        for s in selector:
+            jscode += "%s('%s').attr('checked', 'checked');\n" % (
+                self.jslib, s)
+        self._runjs_on_jquery("radio", jscode)
 
-    def select(self, selector):
-        """Choose a option in a select using a jQuery selector."""
-        jscode = "%s('%s').attr('selected', 'selected')" % (self.jslib, selector)
+    def select(self, selector, remove=True):
+        """Choose a option in a select using a jQuery selector.
+        Selector can be a single selector of a list of selectors
+        """
+        if not isinstance(selector, list):
+            selector = [selector]
+        rjscode = ''
+        jscode = ''
+        for s in selector:
+            if remove:
+                rjscode += ("%s('option:selected', "
+                            "%s('%s').parents('select')[0])"
+                            ".removeAttr('selected');\n" )% (
+                                self.jslib, self.jslib, s) 
+            jscode += "%s('%s').attr('selected', 'selected');\n" % (
+                self.jslib, s)
+        jscode = rjscode + jscode
         self._runjs_on_jquery("select", jscode)
 
-    # TODO: finish to implement
-    #def wk_select_elem(self, element, values):
-    #    """Choose a option in a select using  WebKit API.
-    #    @param element: webkit WebElemement
-    #    """
-    #    for value in values:
-    #        element.evaluateJavaScript(
-    #            "for(var i=0; i < document.formname.dropdownboxname.length; i++) {"
-    #            'if (document.formname.dropdownboxname[i].value == "value") {'
-    #            'document.formname.dropdownboxname[i].selected = true;'
-    #            '}'
-    #            '}'
-    #        )
-    #    jscode = "%s('%s').attr('selected', 'selected')" % (self.jslib, selector)
-    #    self._runjs_on_jquery("select", jscode) 
+    def wk_radio(self, selector):
+        """Choose a option in a select using  WebKit API.
+        @param selector: list of  css selector or css selector  to get the select item.
+        """
+        if not isinstance(selector, list):
+            selector = [selector] 
+        for s in selector:
+            element = self.webframe.findFirstElement(s)
+            element.evaluateJavaScript('this.checked = true;') 
 
-    #def wk_select(self, selector, values):
-    #    """Choose a option in a select using  WebKit API.
-    #    @param selector: css selector to get the select item.
-    #    @param value: list of values to set pass a [value] for a single value.
-    #    """
-    #    element = self.webframe.findFirstElement(selector)
-    #    return self.wk_select_elem(element, values)
+    def wk_select_elem(self, element, values, remove=True):
+        """Choose a option in a select using  WebKit API.
+        @param element: webkit WebElemement
+        """
+        toselect = []
+        notselect = []
+        all_options = []
+        for option in element.findAll('option'):
+            if not option in all_options:
+                all_options.append(option)
+            if values:
+                for v in values:
+                    if option.attribute('value') == v:
+                        if not option in toselect:
+                            toselect.append(option)
+            else:
+                toselect.append(option)
+            if (not option in toselect) and remove:
+                notselect.append(option)
+        for option in toselect:
+            option.evaluateJavaScript('this.selected = true;') 
+        for option in notselect:
+            option.evaluateJavaScript('this.selected = false;') 
+ 
+
+    def wk_select(self, selector, values=None, remove=True):
+        """Choose a option in a select using  WebKit API.
+        @param selector: css selector to get the select item.
+        @param values: string/list of string of values to set pass a single value for a single value.
+        """
+        element = self.webframe.findFirstElement(selector)
+        if not isinstance(values, list) and (values is not None):
+            values = [values]
+        return self.wk_select_elem(element, values, remove)
 
 
     submit = click_link
@@ -1050,10 +1159,12 @@ class Browser(object):
         #JavaScriptCore/runtime/Completion.cpp is catching an exception (sometimes) and
         #returning "TypeError: Type error" - BUT it looks like the JS does complete after
         #the function has already returned
-        r = self.webframe.evaluateJavaScript(jscode)
-        if r.isValid() == False:
-            r = self.webframe.evaluateJavaScript(jscode)
-        return r
+        res = self.webframe.evaluateJavaScript(jscode)
+        js_has_runned_successfully = res.isValid() or res.isNull()
+        if not js_has_runned_successfully:
+            # try another time
+            res = self.webframe.evaluateJavaScript(jscode)
+        return res
 
     def set_javascript_confirm_callback(self, callback):
         """
@@ -1353,5 +1464,4 @@ class _ExtendedNetworkCookieJar(QNetworkCookieJar):
         cookies = [get_cookie(line) for line in string_cookies.splitlines()
           if line.strip() and not line.strip().startswith("#")]
         self.setAllCookies(filter(bool, cookies))
-
 

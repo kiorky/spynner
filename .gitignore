@@ -1,2 +1,10 @@
 *.pyc
+.installed.cfg
+.mr.developer.cfg
+a/
+bin/
+develop-eggs/
+dist/
+parts/
+plone.env
 *.egg-info

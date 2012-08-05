@@ -3,7 +3,14 @@ CHANGELOG
 1.12 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Make new defaults for sane initialization & api cleanup, now:
+        
+
+
+    - We remapped simulations's functions to wk_* ones if there is not jquery simulate
+    - we do not embed jquery 
+    - we do not embed jquery's simulate plugins automaticly
+      specify if you need them
 
 
 1.11 (2012-08-04)
@@ -70,3 +77,5 @@ CHANGELOG
 --------------------
 - Initial release.  [tokland <tokland@gmail.com>]
 
+
+.. vim:set sts=4 ts=4 ai et tw=0:

@@ -31,7 +31,8 @@ def get_tree(h):
 
 def getQtBrowser(download_directory=None):
     debug=4
-    br = browser.Browser(embed_jquery_simulate=False, want_compat=False, debug_level=debug,)
+    br = browser.Browser(embed_jquery=True,
+                         debug_level=debug,)
     br.download_directory = download_directory
     return br
 
@@ -55,7 +56,7 @@ def main(download_directory=None):
         t = get_tree(abrowser)
         return len(t.xpath("//input[@name='q']")) > 0
     br.wait_for_content(can_continuea, 60, u'Timeout while loading account data') 
-    br.wk_fill('input[name="q"]', 'kiorky')
+    br.fill('input[name="q"]', 'kiorky')
     t = get_tree(br)
     name = [a.attrib['name']
             for a in  t.xpath('//input[@type="submit"]') 
@@ -64,7 +65,7 @@ def main(download_directory=None):
     input_sel = "input[name='%s']" % name
     # remodve the search live query ...
     br.native_click('input[name="q"]')
-    br.wk_click(input_sel)
+    br.click(input_sel)
     def can_continueb(abrowser):
         t = get_tree(abrowser)
         return len( t.xpath('//*[@id="ires"]')) > 0
