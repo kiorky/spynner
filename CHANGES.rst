@@ -1,7 +1,7 @@
 CHANGELOG
 ============
-1.12 (unreleased)
------------------
+2.0 (2012-08-05)
+----------------
 
 - Make new defaults for sane initialization & api cleanup, now:
         

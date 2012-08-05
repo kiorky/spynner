@@ -18,7 +18,7 @@ from setuptools import setup, find_packages
 import os
 from distutils.cmd import Command
 
-version = '1.12.dev0'
+version = '2.0'
 url = "https://github.com/makinacorpus/spynner"
 
 class gen_doc(Command):
