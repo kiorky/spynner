@@ -5,12 +5,10 @@ CHANGELOG
 
 - Make new defaults for sane initialization & api cleanup, now:
         
-
-
-    - We remapped simulations's functions to wk_* ones if there is not jquery simulate
-    - we do not embed jquery 
-    - we do not embed jquery's simulate plugins automaticly
-      specify if you need them
+    - We remapped simulations's functions to wk_* ones
+    - we added extensive documentation in src/spynner/tests/spynner.rst
+    - we do not embed jquery as default
+    - we do not embed jquery's simulate plugins automaticly which is totally deprecated
 
 
 1.11 (2012-08-04)

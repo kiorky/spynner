@@ -11,8 +11,7 @@ Spynner takes advantage of `JQuery <http://jquery.com>`_. a powerful Javascript 
 Using Spynner you would able to simulate a web browser with no GUI (though a browsing window can be opened for debugging purposes), so it may be used to implement crawlers or acceptance testing tools.
 
 
-See usage on: https://github.com/makinacorpus/spynner/tree/master/src/spynner/tests/spynner.txt
-
+See usage on: https://github.com/makinacorpus/spynner/tree/master/src/spynner/tests/spynner.rst
 Or below if the section is preset
 
 Credits
