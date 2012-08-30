@@ -76,10 +76,7 @@ setup(
     }, 
     data_files = [
         ('share/doc/spynner/examples',
-            ('examples/wordreference.py',
-            'examples/webkit_methods.py',
-            'examples/native_events.py',
-            'examples/google.py',)),
+            ('examples/anothergoogle.py',)),
         #('share/spynner/javascript',
         #    ('src/spynner/javascript/jquery.min.js',
         #     'src/spynner/javascript/jquery.simulate.js')),
