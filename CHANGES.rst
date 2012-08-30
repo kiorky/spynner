@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.1 (unreleased)
+2.1 (2012-08-30)
 ----------------
 
 - proper release
