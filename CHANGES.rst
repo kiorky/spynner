@@ -3,7 +3,7 @@ CHANGELOG
 2.1 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- proper release
 
 
 2.0 (2012-08-05)
