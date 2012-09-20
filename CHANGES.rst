@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.2 (unreleased)
+2.2 (2012-09-20)
 ----------------
 
 - Fix bug where jquery compatiblity mode can be not activated
