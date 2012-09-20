@@ -3,7 +3,8 @@ CHANGELOG
 2.2 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Fix bug where jquery compatiblity mode can be not activated
+  thx to yusumishi (yusumishi@gmail.com) for report.
 
 
 2.1 (2012-08-30)
