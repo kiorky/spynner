@@ -46,7 +46,7 @@ Dependencies
 
 Feedback
 ==============
-Open an `Issue <https://github.com/kiorky/spynner/issues>`_ to report a bug or request a new feature. Other comments and suggestions can be directly emailed to the authors_.
+Open an `Issue <https://github.com/makinacorpus/spynner/issues>`_ to report a bug or request a new feature. Other comments and suggestions can be directly emailed to the authors_.
 
 Install
 ============
