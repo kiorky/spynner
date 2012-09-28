@@ -3,7 +3,7 @@ CHANGELOG
 2.3 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- documentation
 
 
 2.2 (2012-09-20)
