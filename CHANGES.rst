@@ -3,7 +3,7 @@ CHANGELOG
 2.4 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Example google fixed
 
 
 2.3 (2012-09-28)
