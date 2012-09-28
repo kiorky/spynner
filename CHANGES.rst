@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.4 (unreleased)
+2.4 (2012-09-28)
 ----------------
 
 - Example google fixed
