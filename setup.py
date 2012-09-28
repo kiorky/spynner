@@ -21,28 +21,6 @@ from distutils.cmd import Command
 version = '2.3.dev0'
 url = "https://github.com/makinacorpus/spynner"
 
-class gen_doc(Command):
-    """Generate the HTML API documentation using epydoc
-
-    Output files to docs/api.
-    """
-    description = "generate the api doc"
-    user_options = []
-    target_dir = "docs/api"
-    source = ["spynner/browser.py"]
-
-    def initialize_options(self):
-        self.all = None
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        os.system("epydoc -v --html --fail-on-docstring-warning --no-private " +
-                  "--no-sourcecode -n spynner -u %s -o %s %s" %
-                  (url, self.target_dir, " ".join(self.source)))
-
-
 def read(rnames):
     setupdir =  os.path.dirname( os.path.abspath(__file__))
     return open(
@@ -59,7 +37,6 @@ setup(
     packages = find_packages('src'),
     package_dir = {'': 'src'},
     install_requires=['BeautifulSoup', 'pyquery'],
-    cmdclass={'gen_doc': gen_doc},
     scripts=[],
     license="GPL v3.0",
     long_description = (
