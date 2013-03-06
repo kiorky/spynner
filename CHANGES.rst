@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.5 (unreleased)
+2.5 (2013-03-06)
 ----------------
 
 - Nothing changed yet.
