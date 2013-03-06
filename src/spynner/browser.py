@@ -43,6 +43,8 @@ from PyQt4.QtWebKit import QWebPage, QWebView
 
 SpynnerQapplication = None
 
+
+
 # Debug levels
 ERROR, WARNING, INFO, DEBUG = range(4)
 argv = ['dummy']
@@ -155,9 +157,7 @@ class Browser(object):
         self.cookiesjar = _ExtendedNetworkCookieJar()
         """PyQt4.QtNetwork.QNetworkCookieJar object."""
         self.manager.setCookieJar(self.cookiesjar)
-        self.manager.connect(self.manager,
-            SIGNAL("sslErrors(QNetworkReply *, const QList<QSslError> &)"),
-            self._on_manager_ssl_errors)
+        self.manager.sslErrors.connect(self._on_manager_ssl_errors)
         self.manager.connect(self.manager,
             SIGNAL('finished(QNetworkReply *)'),
             self._on_reply)
