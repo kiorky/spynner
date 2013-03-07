@@ -1254,12 +1254,13 @@ class Browser(object):
 
     #{ Download files
 
-    def download(self, url, outfd=None):
+    def download(self, url, outfd=None, timeout=None):
         """
         Download a given URL using current cookies.
 
         @param url: URL or path to download
         @param outfd: Output file-like stream. If None, return data string.
+        @param tiemout: int, seconds for timeout
         @return: Bytes downloaded (None if something went wrong)
         @note: If url is a path, the current base URL will be pre-appended.
         """
@@ -1278,6 +1279,7 @@ class Browser(object):
         cj.setAllCookies(self.cookiesjar.allCookies())
         manager.setCookieJar(cj)
         reply = manager.get(request)
+        itime = time.time()
         if reply.error():
             raise SpynnerError("Download error: %s" % reply.errorString())
         reply.downloaded_nbytes = 0
@@ -1287,6 +1289,9 @@ class Browser(object):
             outfd = StringIO()
         self._start_download(reply, outfd)
         while self._download_reply_status is None:
+            if timeout:
+                if time.time() - itime > timeout:
+                    raise SpynnerTimeout("Timeout reached: %d seconds" % timeout)
             self._events_loop()
         if outfd_set:
             return (reply.downloaded_nbytes if not reply.error() else None)

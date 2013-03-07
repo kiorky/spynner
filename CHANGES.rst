@@ -3,13 +3,13 @@ CHANGELOG
 2.6 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- fix #17: download timeout
 
 
 2.5 (2013-03-06)
 ----------------
 
-- Nothing changed yet.
+- fix #25: new signal api for sslErrors
 
 
 2.4 (2012-09-28)
