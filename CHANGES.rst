@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.6 (unreleased)
+2.6 (2013-03-07)
 ----------------
 
 - fix #17: download timeout
