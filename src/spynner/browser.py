@@ -428,8 +428,8 @@ class Browser(object):
 
     #{ Basic interaction with browser
 
-    def load(self, 
-             url, 
+    def load(self,
+             url,
              load_timeout=10,
              wait_callback = None,
              tries=None,
@@ -446,7 +446,7 @@ class Browser(object):
 
             >>> br.load('http://www.google.fr')
 
-            Same thing except we will try to see if there is 'google' in the html, 
+            Same thing except we will try to see if there is 'google' in the html,
             thus with 3 wills at 10 seconds of interval
 
             >>> def wait_load(b):
@@ -635,7 +635,7 @@ class Browser(object):
         where = self.webview.mapToGlobal(where)
         return where
 
-    def nativeClickAt(self, where, timeout, real=False):
+    def nativeClickAt(self, where, timeout=1, real=False):
         """Click on an arbitrar location of the browser.
         @param where: where to click (QPoint)
         @param real: if not true coordinates are relative to the window instead of the screen
@@ -765,7 +765,7 @@ class Browser(object):
         return self.wk_click_element_ajax(element, wait_requests=wait_requests, timeout=timeout)
 
     # XXX: TODO: this method do not work by now, event seems not posted, strange
-    def native_click(self, selector, wait_load=False, wait_requests=None, timeout=None, offsetx = 0, offsety = 0):
+    def native_click(self, selector, wait_load=False, wait_requests=None, timeout=None, offsetx = 0, offsety = 0, real=False):
         """
         Click any clickable element in page by sending a raw QT mouse event.
 
@@ -783,7 +783,7 @@ class Browser(object):
         item = self.webframe.findFirstElement(selector)
         item.setFocus()
         where = QPoint(where.x() + offsetx, where.y() + offsety)
-        self.nativeClickAt(where, timeout, real=True)
+        self.nativeClickAt(where, timeout, real=real)
         self.wait_requests(wait_requests)
         if wait_load:
             return self._wait_load(timeout)
@@ -951,7 +951,7 @@ class Browser(object):
         self.create_webview(show=False)
         self.webview.show()
         if maximized:
-            self.webview.setWindowState(Qt.WindowMaximized) 
+            self.webview.setWindowState(Qt.WindowMaximized)
 
     def hide(self):
         """Hide webview browser."""
@@ -1079,7 +1079,7 @@ class Browser(object):
                 rjscode += ("%s('option:selected', "
                             "%s('%s').parents('select')[0])"
                             ".removeAttr('selected');\n" )% (
-                                self.jslib, self.jslib, s) 
+                                self.jslib, self.jslib, s)
             jscode += "%s('%s').attr('selected', 'selected');\n" % (
                 self.jslib, s)
         jscode = rjscode + jscode
@@ -1090,10 +1090,10 @@ class Browser(object):
         @param selector: list of  css selector or css selector  to get the select item.
         """
         if not isinstance(selector, list):
-            selector = [selector] 
+            selector = [selector]
         for s in selector:
             element = self.webframe.findFirstElement(s)
-            element.evaluateJavaScript('this.checked = true;') 
+            element.evaluateJavaScript('this.checked = true;')
 
     def wk_select_elem(self, element, values, remove=True):
         """Choose a option in a select using  WebKit API.
@@ -1115,10 +1115,10 @@ class Browser(object):
             if (not option in toselect) and remove:
                 notselect.append(option)
         for option in toselect:
-            option.evaluateJavaScript('this.selected = true;') 
+            option.evaluateJavaScript('this.selected = true;')
         for option in notselect:
-            option.evaluateJavaScript('this.selected = false;') 
- 
+            option.evaluateJavaScript('this.selected = false;')
+
 
     def wk_select(self, selector, values=None, remove=True):
         """Choose a option in a select using  WebKit API.
