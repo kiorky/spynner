@@ -3,7 +3,10 @@ CHANGELOG
 2.7 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Better ssl support
+- better http headers support
+- pyside support
+- better cookie support
 
 
 2.6 (2013-03-07)

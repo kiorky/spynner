@@ -406,3 +406,28 @@ It feels just natural to work with `pyquery <http://pypi.python.org/pypi/pyquery
     >>> [dict(a.items())['href'] for a in  d.root.xpath('//a')]
     ['http://foo/foo', 'http://foo/a/foo', 'http://foo/../b/foo', 'http://foo/c/foo', 'http://foo/d/foo']
 
+
+HTTP Headers
+============
+
+You can give a list of http headers to send either which each request at
+construct time or via the load methods
+
+Headers are in the form:
+
+
+    - (['User-Agent', 'foobar')]
+
+
+
+SSL support
+=============
+
+you have two keywords argument to specify:
+
+    - a list (see QtSsl) of supported ciphers to use
+    - the protocol to use (sslv2, tlsv1, sslv)3)
+
+
+
+
