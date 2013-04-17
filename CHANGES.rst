@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.7 (unreleased)
+2.7 (2013-04-17)
 ----------------
 
 - Better ssl support
