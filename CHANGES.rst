@@ -3,7 +3,7 @@ CHANGELOG
 2.8 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- add a helper to move the mouse more easily
 
 
 2.7 (2013-04-17)

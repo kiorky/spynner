@@ -429,5 +429,10 @@ you have two keywords argument to specify:
     - the protocol to use (sslv2, tlsv1, sslv)3)
 
 
+Mouse
+========
+you can move the move on a css selector ::
+
+    br.move_mouse('.myclass', [offsetx=0, offsety=0])
 
 

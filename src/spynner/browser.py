@@ -690,10 +690,21 @@ class Browser(object):
         """Click a AJAX link and wait for the request to finish."""
         return self.click(selector, wait_requests=wait_requests, timeout=timeout)
 
-    def moveMouse(self, where, timeout=1, real=False):
+    def mouve_mouse(self, selector, timeout=1, offsetx=0, offsety=0, real=True):
+        """Move the move to the css selector"""
+        self.moveMouse(
+            self.getPosition(
+                selector,
+                offsetx=offsetx, offsety=offsety),
+            timeout=timeout,
+            real=real)
+
+    def moveMouse(self, where, timeout=1, real=False, offsetx=0, offsety=0):
         """Move the mouse to a relative to the window point."""
         if not real:
             where = self.getRealPosition(where)
+        where = QPoint(int(where.x())+offsetx,
+                       int(where.y())+offsety)
         self.webview.grabMouse()
         cursorw = QCursor()
         cursorw.setPos(where)
@@ -702,12 +713,13 @@ class Browser(object):
         self.wait(timeout)
         self.webview.releaseMouse()
 
-    def getRealPosition(self, point):
+    def getRealPosition(self, point, offsetx=0, offsety=0):
         """Compute the coordinates by merging with the containing frame.
         @param point: (QPoint)
         """
         rect = self.webframe.geometry()
-        where = QPoint(rect.x() + point.x(), rect.y() + point.y())
+        where = QPoint(rect.x() + point.x() + offsetx,
+                       rect.y() + point.y() + offsety)
         where = self.webview.mapToGlobal(where)
         return where
 
@@ -729,7 +741,7 @@ class Browser(object):
         self._events_loop(timeout)
         self.webview.releaseMouse()
 
-    def getPosition(self, selector):
+    def getPosition(self, selector, offsetx=0, offsety=0):
         """Get the position QPoint(x,y) of a css selector.
         @param selector: The css Selector to query against
         """
@@ -739,6 +751,8 @@ class Browser(object):
             item = self.webframe.findFirstElement(selector)
             geo = item.geometry()
             twhere = geo.topLeft()
+            twhere = QPoint(int(twhere.x()) + offsetx,
+                            int(twhere.y()) + offsety)
             where = self.webview.mapToGlobal(twhere)
             if where == twhere:
                 where = self.webview.mapToGlobal(where)
@@ -746,7 +760,7 @@ class Browser(object):
             #try also using js
             try:
                 x, y = ("%s" % toString(self.runjs(jscode, debug=False))).split(',')
-                twhere = QPoint(int(x), int(y))
+                twhere = QPoint(int(x)+offsetx, int(y)+offsety)
                 where = self.webview.mapToGlobal(twhere)
                 if where == twhere:
                     where = self.webview.mapToGlobal(where)
