@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.8 (unreleased)
+2.8 (2013-04-19)
 ----------------
 
 - add a helper to move the mouse more easily
