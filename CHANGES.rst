@@ -3,7 +3,7 @@ CHANGELOG
 2.9 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- run natives clicks with autopy
 
 
 2.8 (2013-04-19)

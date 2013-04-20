@@ -43,6 +43,7 @@ Dependencies
   * `Python >=26 <http://www.python.org>`_
   * `PyQt > 443 <http://www.riverbankcomputing.co.uk/software/pyqt/download>`_
   * Libxml2 / Libxslt libraries and includes files for lxml
+  * autopy which in turns need xtst lib & headers on linux (aka Xtest)
 
 Feedback
 ==============

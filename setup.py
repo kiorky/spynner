@@ -36,7 +36,7 @@ setup(
     url=url,
     packages = find_packages('src'),
     package_dir = {'': 'src'},
-    install_requires=['BeautifulSoup', 'pyquery'],
+    install_requires=['BeautifulSoup', 'pyquery', 'autopy'],
     scripts=[],
     license="GPL v3.0",
     long_description = (

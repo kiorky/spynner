@@ -33,6 +33,7 @@ import os
 from StringIO import StringIO
 
 import pkg_resources
+import autopy
 
 try:
     from PySide import QtCore
@@ -690,7 +691,7 @@ class Browser(object):
         """Click a AJAX link and wait for the request to finish."""
         return self.click(selector, wait_requests=wait_requests, timeout=timeout)
 
-    def mouve_mouse(self, selector, timeout=1, offsetx=0, offsety=0, real=True):
+    def move_mouse(self, selector, timeout=1, offsetx=0, offsety=0, real=True):
         """Move the move to the css selector"""
         self.moveMouse(
             self.getPosition(
@@ -699,19 +700,24 @@ class Browser(object):
             timeout=timeout,
             real=real)
 
-    def moveMouse(self, where, timeout=1, real=False, offsetx=0, offsety=0):
+    def moveMouse(self, where, timeout=1, real=False,
+                  offsetx=0, offsety=0,
+                  adapt_size=False, pdb=False):
         """Move the mouse to a relative to the window point."""
+        if adapt_size:
+            time.sleep(1)
         if not real:
             where = self.getRealPosition(where)
         where = QPoint(int(where.x())+offsetx,
                        int(where.y())+offsety)
         self.webview.grabMouse()
+        #self._events_loop(timeout)
+        #cursorw = self.application.desktop().cursor()
         cursorw = QCursor()
         cursorw.setPos(where)
-        self.wait(1)
-        self.webview.setCursor(cursorw)
-        self.wait(timeout)
         self.webview.releaseMouse()
+        #self._events_loop(timeout)
+        return cursorw
 
     def getRealPosition(self, point, offsetx=0, offsety=0):
         """Compute the coordinates by merging with the containing frame.
@@ -723,7 +729,7 @@ class Browser(object):
         where = self.webview.mapToGlobal(where)
         return where
 
-    def nativeClickAt(self, where, timeout=1, real=False):
+    def nativeClickAt(self, where, timeout=1, real=False, pdb=False):
         """Click on an arbitrar location of the browser.
         @param where: where to click (QPoint)
         @param real: if not true coordinates are relative to the window instead of the screen
@@ -731,15 +737,28 @@ class Browser(object):
         """
         if not real:
             where = self.getRealPosition(where)
-        self.moveMouse(where, real=True)
-        self.webview.grabMouse()
-        eventp = QMouseEvent(QEvent.MouseButtonPress,   where, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
-        eventl = QMouseEvent(QEvent.MouseButtonRelease, where, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
-        self.application.sendEvent(self.application.focusWidget(), eventp)
-        self.application.sendEvent(self.application.focusWidget(), eventl)
-        self._events_loop(timeout)
-        self._events_loop(timeout)
-        self.webview.releaseMouse()
+        self.moveMouse(where, timeout=timeout, real=True, pdb=pdb)
+        """do not work anymore, rely on autopy
+        def click():
+            in the meantime
+            w = self.webview.page()
+            buttons = Qt.MouseButtons(Qt.LeftButton)
+            eventp = QMouseEvent(QEvent.MouseButtonPress, where,
+                                 Qt.LeftButton, buttons, Qt.NoModifier)
+            eventl = QMouseEvent(QEvent.MouseButtonRelease, where,
+                                 Qt.LeftButton, buttons, Qt.NoModifier)
+            f.application.sendEvent(w, eventp)
+            self.application.sendEvent(w, eventl)
+            self._events_loop(0)
+            self._events_loop(0)
+            self.application.processEvents()
+            self.application.processEvents()"""
+        autopy.mouse.click()
+        try:
+            self._events_loop(0.05)
+            self._events_loop(0.05)
+        except:
+            pass
 
     def getPosition(self, selector, offsetx=0, offsety=0):
         """Get the position QPoint(x,y) of a css selector.
@@ -853,8 +872,7 @@ class Browser(object):
         element = self.webframe.findFirstElement(selector)
         return self.wk_click_element_ajax(element, wait_requests=wait_requests, timeout=timeout)
 
-    # XXX: TODO: this method do not work by now, event seems not posted, strange
-    def native_click(self, selector, wait_load=False, wait_requests=None, timeout=None, offsetx = 5, offsety = 5, real=False):
+    def native_click(self, selector, wait_load=False, wait_requests=None, timeout=1, offsetx = 5, offsety = 5, real=False, pdb=False):
         """
         Click any clickable element in page by sending a raw QT mouse event.
 
@@ -872,12 +890,11 @@ class Browser(object):
         item = self.webframe.findFirstElement(selector)
         item.setFocus()
         where = QPoint(where.x() + offsetx, where.y() + offsety)
-        self.nativeClickAt(where, timeout, real=real)
+        self.nativeClickAt(where, timeout, real=real, pdb=pdb)
         self.wait_requests(wait_requests)
         if wait_load:
             return self._wait_load(timeout)
 
-    # XXX: TODO: this method do not work by now, event seems not posted, strange
     def native_click_link(self, selector, timeout=None, offsetx = 0, offsety = 0):
         """Click a link and wait for the page to load using a real mouse event.
         @param selector: jQuery selector.
@@ -888,7 +905,6 @@ class Browser(object):
         """
         return self.native_click(selector, wait_load=True, timeout=timeout, offsetx=offsetx, offsety=offsety)
 
-    # XXX: TODO: this method do not work by now, event seems not posted, strange
     def native_click_ajax(self, selector, wait_requests=1, timeout=None, offsetx = 0, offsety = 0):
         """Click a AJAX link using a raw mouse click and wait for the request to finish.
         @param selector: jQuery selector.
