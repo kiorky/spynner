@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.9 (unreleased)
+2.9 (2013-04-22)
 ----------------
 
 - run natives clicks with autopy
