@@ -3,7 +3,7 @@ CHANGELOG
 2.10 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- fix release
 
 
 2.9 (2013-04-22)
