@@ -3,8 +3,7 @@ CHANGELOG
 2.11 (unreleased)
 -----------------
 
-- Nothing changed yet.
-
+- fix release again
 
 2.10 (2013-04-22)
 -----------------

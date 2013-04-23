@@ -1,5 +1,8 @@
 include *.txt *.rst *.cfg
 recursive-include src *py
+recursive-include examples *py
 recursive-include src *
+recursive-include test *
+recursive-include docs *
 global-exclude *pyc
 global-exclude .*.cfg
