@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.11 (unreleased)
+2.11 (2013-04-23)
 -----------------
 
 - fix release again
