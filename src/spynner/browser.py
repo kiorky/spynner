@@ -282,13 +282,25 @@ class Browser(object):
         self.cookies = merge_cookies(
             self.cookies,
             self.manager.cookieJar().allCookies())
+
+        try:
+            http_status = "%s" % toString(
+                reply.attribute(QNetworkRequest.HttpStatusCodeAttribute))
+            http_status_m = "%s" % toString(
+                reply.attribute(QNetworkRequest.HttpReasonPhraseAttribute))
+        except:
+            http_status_m, http_status = "", ""
+
+
         if reply.error():
-            self._debug(WARNING, "Reply error: %s - %d (%s)" %
-                (self._reply_url, reply.error(), reply.errorString()))
+            self._debug(WARNING, "Reply error: %s/%s %s - %d (%s)" %
+                (http_status, http_status_m,
+                 self._reply_url, reply.error(), reply.errorString()))
             self.errorCode = reply.error()
             self.errorMessage = reply.errorString()
         else:
-            self._debug(INFO, "Reply successful: %s" % self._reply_url)
+            self._debug(INFO, "Reply: %s/%s - %s" % (
+                http_status, http_status_m, self._reply_url))
         for header in reply.rawHeaderList():
             self._debug(DEBUG, "  %s: %s" % (header, reply.rawHeader(header)))
 
@@ -1604,8 +1616,6 @@ def get_cookie_info(cookie):
     }
 
 
-
-
 def merge_cookies(cookies1, cookies2):
     kf = "%(name)s____%(domain)s____%(path)s"
     cookies = dict(
@@ -1614,11 +1624,16 @@ def merge_cookies(cookies1, cookies2):
          [(get_cookie_info(cc), cc) for cc in cookies1]
         ])
     for i in cookies2:
-        if 'LaBanquePostale' in kf:
-            pprint (
-                [get_cookie_info(c) for c in cookies],
-                get_cookie_info(i))
-        cookies[kf % get_cookie_info(i)] = i
+        k = kf % get_cookie_info(i)
+        if k in cookies:
+            j = cookies[k]
+            #if j != i:
+            #    print "-"*80
+            #    print k
+            #    print j.toRawForm()
+            #    print i.toRawForm()
+            #    print "-"*80
+        cookies[k] = i
     return cookies.values()
 
 
@@ -1638,8 +1653,10 @@ class NManager(QNetworkAccessManager):
     def createRequest(manager, operation, request, data):
         self = manager.ob
         jar = manager.cookieJar()
-        cookies = merge_cookies(jar.allCookies(),
-                                self.cookies)
+        cookies = merge_cookies(
+            self.cookies,
+            jar.allCookies(),
+        )
         manager.cookieJar().setAllCookies(cookies)
         url = unicode(toString(request.url()))
         operation_name = self._operation_names.get(
