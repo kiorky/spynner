@@ -215,11 +215,13 @@ class Browser(object):
         mngr.authenticationRequired.connect(
             self._on_authentication_required)
         self._operation_names = dict(
-            (getattr(QNetworkAccessManager, s + "Operation"),
+            (getattr(QNetworkAccessManager, s + "Operation", s),
              s.lower())
             for s in ("Get", "Head", "Post",
                       "Put", "Delete", "Custom"))
-
+        for i in self._operation_names.keys():
+            if isinstance(i, basestring):
+                del self._operation_names[i]
         # Webpage slots
         self._load_status = None
         self._replies = 0
