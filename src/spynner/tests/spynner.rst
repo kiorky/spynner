@@ -438,9 +438,9 @@ you can move the move on a css selector ::
 
 Proxy support
 =============
-Spynner support all proxiess supported by qt (http(s), socks5 & ftp)::
+Spynner support all proxiess supported by qt (http(s), socks5 & ftp)
 
-See **examples/proxy.py** in the examples directory::
+See **examples/proxy.py** in the examples directory
 
 basically use::
 
