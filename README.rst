@@ -3,6 +3,11 @@ Intro
 
 .. contents::
 
+
+.. image:: https://secure.travis-ci.org/makinacorpus/spynner.png
+    :target: http://travis-ci.org/makinacorpus/spynner
+
+
 Spynner is a stateful programmatic web browser module for Python.
 It is based upon `PyQT <http://www.qtsoftware.com/>`_ and `WebKit <http://webkit.org/>`_.
 It supports Javascript, AJAX, and every other technology that !WebKit is able to handle (Flash, SVG, ...).
