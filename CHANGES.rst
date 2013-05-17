@@ -4,6 +4,7 @@ CHANGELOG
 -----------------
 
 - Better proxy support
+- Travis setup
 
 
 2.12 (2013-05-03)
