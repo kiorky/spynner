@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.13 (unreleased)
+2.13 (2013-05-17)
 -----------------
 
 - Better proxy support
