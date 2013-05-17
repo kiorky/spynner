@@ -1,0 +1,81 @@
+[buildout]
+package-src =
+#use comma separated values on pep8 ignore
+package-pep8-ignores = E501
+package-coverage = 80
+package-js-ignores = ! -name bootstrap\* ! -name jquery\*
+package-css-ignores = ! -name bootstrap\* ! -name jquery\*
+
+
+[createzopecoverage]
+recipe = createzopecoverage
+
+[flake8]
+recipe = zc.recipe.egg
+eggs =
+    flake8
+    ${buildout:eggs}
+entry-points = flake8=flake8.run:main
+
+[coverage-sh]
+recipe = collective.recipe.template
+output = ${buildout:directory}/bin/coverage.sh
+mode = 755
+input = inline:
+    #! /bin/sh
+    # default minimum coverage is 80%
+    DEFAULT=${buildout:package-coverage}
+    REPORT="coverage/reports/all.html"
+    
+    if [ $# -eq 1 ] && [ $1 -ge 0 ] && [ $1 -le 100 ]; then
+        MINIMUM=$1
+    else
+        echo "Invalid value for minimum coverage; using default: $DEFAULT%"
+        MINIMUM=$DEFAULT
+    fi
+    
+    if [ ! -f "$REPORT" ]; then
+        bin/createzopecoverage 1>/dev/null
+    fi
+    
+    # find first percentage value in file (module test coverage) and return it
+    COVERAGE=`grep "[0-9]\{1,3\}[%]" $REPORT -m 1 -o | grep "[0-9]\{1,3\}" -o`
+    
+    if [ $COVERAGE -lt $MINIMUM ]; then
+        echo "Insufficient test coverage: $COVERAGE% (minimum acceptable is $MINIMUM%)"
+        exit 1
+    else
+        exit 0
+    fi
+
+[css-validation-sh]
+recipe = collective.recipe.template
+output = ${buildout:directory}/bin/css-validation.sh
+mode = 755
+input = inline:
+    #! /bin/sh
+    src=${buildout:package-src}
+    css_ignores='${buildout:package-css-ignores}'
+    echo CSS files
+    find $src -type f \( -name *.css $css_ignores \)  | xargs csslint | ack-grep --passthru error
+
+[js-validation-sh]
+recipe = collective.recipe.template
+output = ${buildout:directory}/bin/js-validation.sh
+mode = 755
+input = inline:
+    #! /bin/sh
+    src=${buildout:package-src}
+    js_ignores='${buildout:package-js-ignores}'
+    echo JS files
+    find $src -type f \( -iname *.js $js_ignores \) | xargs jshint | ack-grep --passthru error
+
+[python-validation-sh]
+recipe = collective.recipe.template
+output = ${buildout:directory}/bin/python-validation.sh
+mode = 755
+input = inline:
+    #! /bin/sh
+    src=${buildout:package-src}
+    echo Validating Python files
+    bin/flake8 --ignore=${buildout:package-pep8-ignores} $src

@@ -1,4 +1,5 @@
 *.pyc
+spynner.env
 sys
 .installed.cfg
 .mr.developer.cfg

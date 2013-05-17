@@ -1,10 +1,17 @@
 language: python
 python: 2.7
+virtualenv:
+  system_site_packages: true
 env:
-  - TARGET=test CONFIG=buildout.cfg
-
+  - TARGET=test CONFIG=test.cfg
+before_install:
+  - sudo apt-get install -y libqt4-dev python-qt4 pyqt4-dev-tools qt4-designer python-sip-dev python-sip libxtst-dev libxml2-dev libxslt1-dev
+  - python -c 'import sip'
+  - python -c 'import PyQt4'
+  - python -c 'import PyQt4.QtCore'
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
 install:
   - python bootstrap.py
   - bin/buildout -N -t 3 -c $CONFIG
-
 script: bin/$TARGET
