@@ -18,7 +18,7 @@ class IntegrationLayer(Layer):
 
 class FunctionnalLayer(IntegrationLayer):
     """."""
-                                  
+
 
 A_SPYNNER_FIXTURE = Layer()
 A_SPYNNER_INTEGRATION_TESTING = IntegrationLayer()

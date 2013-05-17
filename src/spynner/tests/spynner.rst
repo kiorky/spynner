@@ -85,7 +85,7 @@ We wait to have 'aaa' in the html, thus with unlimited tries at 1 seconds interv
 
 Hit the wrong url, Eck, you are on an unlimited loop !::
 
-    # >> browser.load(bp+"html_controls.html", 1, wait_callback=wait_load)
+    >>> browser.load(bp+"html_controls.html", 1, wait_callback=wait_load)
 
     content loaded, waiting for content to mach the callback
     content loaded, waiting for content to mach the callback
@@ -104,7 +104,6 @@ Hit the wrong url, Eck, you are on an unlimited loop unless you wear condoms and
 It will throw an exception, but stop::
 
     >>> ret = debug_stream.read()
-
 
     Traceback (most recent call last):
       ...
@@ -126,20 +125,27 @@ Interact with the controls
   - low level using QT raw events which are not that well working ATM.
     At least, you can move the mouse and sendKeys but it's a case per case coding.
 
+Setup::
+
+    >>> browser.close()
+    >>> del browser
+
 Using radio inputs
 ----------------------
 ::
 
-    >>> browser.close()
     >>> browser = spynner.Browser(debug_level=spynner.DEBUG, debug_stream=debug_stream)
     >>> ret = browser.load(bp+'/html_controls.html', 1, wait_callback=wait_load)
+
 
 Using jquery
 ++++++++++++++++++
 ::
 
-    >>> browser.load_jquery(True)
-    >>> browser.radio('#radiomea')
+   >>> browser.load_jquery(True)
+
+   >>> browser.radio('#radiomea')
+
     >>> ret = run_debug(browser.runjs, '$("input[name=radiome]").each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.val()+" "+je.attr("checked"));});')
     Run Javascript code: $("input[name=radiome]").each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.val()+" "+je.attr("checked"));});
     Javascript console (:1): radiomea a true
@@ -409,16 +415,12 @@ It feels just natural to work with `pyquery <http://pypi.python.org/pypi/pyquery
 
 HTTP Headers
 ============
-
 You can give a list of http headers to send either which each request at
 construct time or via the load methods
 
 Headers are in the form:
 
-
     - (['User-Agent', 'foobar')]
-
-
 
 SSL support
 =============
@@ -428,11 +430,31 @@ you have two keywords argument to specify:
     - a list (see QtSsl) of supported ciphers to use
     - the protocol to use (sslv2, tlsv1, sslv)3)
 
-
 Mouse
 ========
 you can move the move on a css selector ::
 
     br.move_mouse('.myclass', [offsetx=0, offsety=0])
+
+Proxy support
+=============
+Spynner support all proxiess supported by qt (http(s), socks5 & ftp)::
+
+See **examples/proxy.py** in the examples directory::
+
+basically use::
+
+    br.set_proxy('foo:3128')
+    br.set_proxy('http://foo:3128')
+    br.set_proxy('http://user:suserpassword@foo:3128')
+    br.set_proxy('https://user:suserpassword@foo:3128')
+    br.set_proxy('socks5://user:suserpassword@foo:3128')
+    br.set_proxy('httpcaching://user:suserpassword@foo:3128')
+    br.set_proxy('ftpcaching://user:suserpassword@foo:3128')
+
+You can also use proxy in the download method.
+Note that it will use by default the proxy setted via a previous br.set_proxy call::
+
+    br.download('http://superfile', proxy_url='foo:3128')
 
 

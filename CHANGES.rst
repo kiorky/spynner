@@ -3,7 +3,7 @@ CHANGELOG
 2.13 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Better proxy support
 
 
 2.12 (2013-05-03)

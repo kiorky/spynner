@@ -284,7 +284,6 @@ class Browser(object):
         self.cookies = merge_cookies(
             self.cookies,
             self.manager.cookieJar().allCookies())
-
         try:
             http_status = "%s" % toString(
                 reply.attribute(QNetworkRequest.HttpStatusCodeAttribute))
@@ -355,7 +354,8 @@ class Browser(object):
         self.webview = None
 
     def _on_load_finished(self, successful):
-        self.setframe_obj()
+        if hasattr(self, "webpage"):
+            self.setframe_obj()
         self._load_status = successful
         status = {True: "successful", False: "error"}[successful]
         self._debug(INFO, "Page load finished (%d bytes): %s (%s)" %
@@ -397,7 +397,7 @@ class Browser(object):
             self._debug(DEBUG, "Read from download stream (%d bytes): %s"
                 % (len(data), url))
         def _on_network_error():
-            self.debug(ERROR, "Network error on download: %s" % url)
+            self._debug(ERROR, "Network error on download: %s" % url)
         def _on_finished():
             if path is not None:
                 outfd.flush()
@@ -470,6 +470,8 @@ class Browser(object):
     url = property(_get_url)
     """Current URL."""
 
+    contents = property(_get_html)
+    """Rendered HTML in current page."""
     html = property(_get_html)
     """Rendered HTML in current page."""
 
@@ -1345,44 +1347,20 @@ class Browser(object):
         return self.cookiesjar.setMozillaCookies(string_cookies)
 
     def get_proxy(self):
-        """Return string containing the current proxy."""
-        return self.manager.proxy()
+        """Set NManager.get_proxy (wrapper)"""
+        return self.manager.get_proxy()
 
     def set_proxy(self, string_proxy):
-        """Set proxy [http|socks5]://username:password@hostname:port"""
-        urlinfo = urlparse.urlparse(string_proxy)
+        """Set NManager.set_proxy (wrapper)"""
+        return self.manager.set_proxy(string_proxy)
 
-        proxy = QNetworkProxy()
-        if urlinfo.scheme == 'socks5' :
-                proxy.setType(1)
-        elif urlinfo.scheme == 'http' :
-                proxy.setType(3)
-        else :
-                proxy.setType(2)
-                self.manager.setProxy(proxy)
-                return self.manager.proxy()
-
-        proxy.setHostName(urlinfo.hostname)
-        proxy.setPort(urlinfo.port)
-        if urlinfo.username != None :
-                proxy.setUser(urlinfo.username)
-        else :
-                proxy.setUser('')
-
-        if urlinfo.password != None :
-                proxy.setPassword(urlinfo.password)
-        else :
-                proxy.setPassword('')
-
-        self.manager.setProxy(proxy)
-        return self.manager.proxy()
-
-    def download(self, url, outfd=None, timeout=None):
+    def download(self, url, outfd=None, timeout=None, proxy_url=None):
         """
         Download a given URL using current cookies.
 
         @param url: URL or path to download
         @param outfd: Output file-like stream. If None, return data string.
+        @param proxy_url: special proxy url (see NManager.set_proxy) to use (default to global networkmanager's proxy
         @param tiemout: int, seconds for timeout
         @return: Bytes downloaded (None if something went wrong)
         @note: If url is a path, the current base URL will be pre-appended.
@@ -1397,6 +1375,7 @@ class Browser(object):
         request = self.apply_ssl(request)
         # Create a new manager to process this download
         manager = NManager.new(self)
+        manager.set_proxy(proxy_url)
         reply = manager.get(request)
         itime = time.time()
         if reply.error():
@@ -1647,6 +1626,7 @@ class NManager(QNetworkAccessManager):
             cookiejar_klass = ExtendedNetworkCookieJar
         manager = klass()
         manager.ob = spynner
+        manager.proxy_url = None
         cookiejar = cookiejar_klass()
         manager.setCookieJar(cookiejar)
         manager.cookieJar().setParent(spynner.webpage)
@@ -1676,4 +1656,62 @@ class NManager(QNetworkAccessManager):
         reply = QNetworkAccessManager.createRequest(
             manager, operation, req, data)
         return reply
+
+    def get_proxy(self):
+        """Return string containing the current proxy."""
+        return self.proxy()
+
+    def set_proxy(self, string_proxy=None):
+        """Set proxy:
+        url can be in the form:
+
+            - hostname                        (http proxy)
+            - hostname:port                   (http proxy)
+            - username:password@hostname:port (http proxy)
+            - http://username:password@hostname:port
+            - socks5://username:password@hostname:port
+            - https://username:password@hostname:port
+            - httpcaching://username:password@hostname:port
+            - ftpcaching://username:password@hostname:port
+
+        """
+        if not string_proxy:
+            string_proxy = ''
+        if string_proxy:
+            urlinfo = urlparse.urlparse(string_proxy)
+            # default to http proxy if we have a string
+            if not urlinfo.scheme:
+                string_proxy = "http://%s" % string_proxy
+                urlinfo = urlparse.urlparse(string_proxy)
+            self.ob._debug(
+                WARNING, "Proxy: %s" % string_proxy)
+            self.proxy_url = string_proxy
+            proxy = QNetworkProxy()
+            if urlinfo.scheme == 'socks5':
+                proxy.setType(QNetworkProxy.Socks5Proxy)
+            elif urlinfo.scheme in ['https', 'http']:
+                proxy.setType(QNetworkProxy.HttpProxy)
+            elif urlinfo.scheme == 'httpcaching':
+                proxy.setType(QNetworkProxy.HttpCachingProxy)
+            elif urlinfo.scheme == 'ftpcaching':
+                proxy.setType(QNetworkProxy.FtpCachingProxy)
+            else:
+                proxy.setType(QNetworkProxy.NoProxy)
+            if urlinfo.hostname != None:
+                proxy.setHostName(urlinfo.hostname)
+            if urlinfo.port != None:
+                proxy.setPort(urlinfo.port)
+            if urlinfo.username != None:
+                proxy.setUser(urlinfo.username)
+            else:
+                proxy.setUser('')
+            if urlinfo.password != None:
+                proxy.setPassword(urlinfo.password)
+            else:
+                proxy.setPassword('')
+            self.setProxy(proxy)
+        elif self is not self.ob.manager:
+            if self.ob.manager.proxy_url:
+                self.set_proxy(self.ob.manager.proxy_url)
+        return self.proxy()
 

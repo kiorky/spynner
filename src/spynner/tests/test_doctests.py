@@ -7,17 +7,10 @@ Launching all doctests in the tests directory using:
 
 from spynner.tests.base import FunctionalTestCase
 
-# GLOBALS avalaible in doctests
-# IMPORT/DEFINE objects there or inside ./user_globals.py (better)
-# globals from the testing product are also available.
-# example:
-# from for import bar
-# and in your doctests, you can do:
-# >>> bar.something
-from spynner.tests.globals import *
 from spynner.testing import A_SPYNNER_FUNCTIONAL_TESTING as FUNCTIONAL_TESTING
 
-
+from pprint import pprint
+from copy import deepcopy as dc
 import unittest2 as unittest
 import glob
 import os
