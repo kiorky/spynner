@@ -1,0 +1,10 @@
+language: python
+python: 2.7
+env:
+  - TARGET=test CONFIG=buildout.cfg
+
+install:
+  - python bootstrap.py
+  - bin/buildout -N -t 3 -c $CONFIG
+
+script: bin/$TARGET
