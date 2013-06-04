@@ -3,7 +3,7 @@ CHANGELOG
 2.14 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- cookie jar fix (#41)
 
 
 2.13 (2013-05-17)

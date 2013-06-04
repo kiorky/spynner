@@ -1338,6 +1338,16 @@ class Browser(object):
         """
         self._javascript_prompt_callback = callback
 
+    @property
+    def cookiesjar(self):
+        """Compat."""
+        return self.manager.cookieJar()
+
+    @property
+    def cookiejar(self):
+        """Compat."""
+        return self.cookiesjar
+
     def get_cookies(self):
         """Return string containing the current cookies in Mozilla format."""
         return self.cookiesjar.mozillaCookies()
