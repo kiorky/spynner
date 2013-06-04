@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.14 (unreleased)
+2.14 (2013-06-05)
 -----------------
 
 - cookie jar fix (#41)
