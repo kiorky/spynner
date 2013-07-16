@@ -3,7 +3,7 @@ CHANGELOG
 2.15 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- fix #46
 
 
 2.14 (2013-06-05)
