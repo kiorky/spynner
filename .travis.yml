@@ -6,6 +6,7 @@ env:
   - TARGET=test CONFIG=test.cfg
 before_install:
   - sudo apt-get install -y libqt4-dev python-qt4 pyqt4-dev-tools qt4-designer python-sip-dev python-sip libxtst-dev libxml2-dev libxslt1-dev
+  - easy_install -U setuptools
   - python -c 'import sip'
   - python -c 'import PyQt4'
   - python -c 'import PyQt4.QtCore'
