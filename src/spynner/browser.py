@@ -1386,6 +1386,7 @@ class Browser(object):
         # Create a new manager to process this download
         manager = NManager.new(self)
         manager.set_proxy(proxy_url)
+        manager.sslErrors.connect(self._on_manager_ssl_errors)
         reply = manager.get(request)
         itime = time.time()
         if reply.error():
