@@ -3,7 +3,7 @@ CHANGELOG
 2.16 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- fix a bug in download, reply can be not finished to read on exit
 
 
 2.15 (2013-07-16)

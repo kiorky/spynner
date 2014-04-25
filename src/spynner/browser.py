@@ -399,12 +399,25 @@ class Browser(object):
         def _on_network_error():
             self._debug(ERROR, "Network error on download: %s" % url)
         def _on_finished():
+            data = reply.readAll()
+            if len(data):
+                if getattr(reply, 'downloaded_nbytes at end', None) is None:
+                    reply.downloaded_nbytes= 0
+                reply.downloaded_nbytes += len(data)
+                outfd.write(data)
+            self._debug(DEBUG, "Read from download stream at end (%d bytes): %s"
+                % (len(data), url))
+            suf = ''
             if path is not None:
                 outfd.flush()
                 dict(self.files)[path]['finished'] = True
-            self._debug(INFO, "Download finished: %s" % url)
+                suf = ' in {0}'.format(path)
+            self._debug(INFO, "Download finished: {0}{1}".format(url, path))
+
         if path is not None:
-            self.files.append((path, {'reply':reply,'finished':False,}))
+            self.files.append((path, {'reply':reply,
+                                      'readed': False,
+                                      'finished':False,}))
         reply.readyRead.connect(_on_ready_read)
         reply.error.connect(_on_network_error)
         reply.finished.connect(_on_finished)
