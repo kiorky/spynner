@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.16 (unreleased)
+2.16 (2014-04-25)
 -----------------
 
 - fix a bug in download, reply can be not finished to read on exit
