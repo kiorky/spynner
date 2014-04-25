@@ -18,7 +18,7 @@ from setuptools import setup, find_packages
 import os
 from distutils.cmd import Command
 
-version = '2.16'
+version = '2.17.dev0'
 url = "https://github.com/makinacorpus/spynner"
 
 def read(rnames):
