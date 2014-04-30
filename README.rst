@@ -60,7 +60,7 @@ Install
 
     easy_install spynner
 
-    (In Windows, you may have to install autopy through its installer)
+  (In Windows, you may have to install autopy through its installer)
 
 * The bleeding edge version is hosted on github::
 
