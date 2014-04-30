@@ -60,6 +60,8 @@ Install
 
     easy_install spynner
 
+.. note:: In Windows, you may have to install autopy through its installer
+
 * The bleeding edge version is hosted on github::
 
     git clone https://github.com/makinacorpus/spynner.git
