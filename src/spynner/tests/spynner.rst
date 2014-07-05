@@ -1,4 +1,4 @@
-Initialazing the browser
+Initializing the browser
 ==================================
 The main concept to have a browser out there::
 
