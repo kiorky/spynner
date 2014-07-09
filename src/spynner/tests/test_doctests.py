@@ -28,7 +28,7 @@ def test_suite():
     try:
         files = glob.glob(os.path.join(cwd, '*txt'))
         files += glob.glob(os.path.join(cwd, '*rst'))
-    except Exception,e:
+    except Exception as e:
         logger.warn('No doctests for spynner')
     suite = unittest.TestSuite()
     globs = globals()
@@ -45,5 +45,3 @@ def test_suite():
             ),
         ])
     return suite
-
-

@@ -36,7 +36,13 @@ setup(
     url=url,
     packages = find_packages('src'),
     package_dir = {'': 'src'},
-    install_requires=['BeautifulSoup', 'pyquery', 'autopy', 'setuptools',],
+    install_requires=[
+        'six',
+        'beautifulsoup4',
+        'pyquery',
+        'autopy',        #'https://github.com/Riamse/autopy.git',
+        'setuptools',
+    ],
     scripts=[],
     license="GPL v3.0",
     long_description = (
@@ -50,7 +56,7 @@ setup(
     include_package_data=True,
     extras_require = {
         'test': ['ipython', 'plone.testing']
-    }, 
+    },
     data_files = [
         ('share/doc/spynner/examples',
             ('examples/anothergoogle.py',)),
