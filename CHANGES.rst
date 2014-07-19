@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.19 (unreleased)
+2.19 (2014-07-19)
 -----------------
 
 - Nothing changed yet.
