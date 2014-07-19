@@ -21,16 +21,17 @@ Javascript/AJAX support. It is build upon the PyQtWebKit framework.
 
 
 import itertools
-import cookielib
+import six
+from six.moves import http_cookiejar as cookielib
 import tempfile
 from pprint import pprint
-import urlparse
-import urllib2
+from six.moves.urllib import parse as urlparse
+from six.moves import urllib as urllib2
 import time
 import sys
 import re
 import os
-from StringIO import StringIO
+from six import BytesIO as StringIO
 
 import pkg_resources
 import autopy
@@ -46,7 +47,7 @@ try:
     from PySide.QtNetwork import QNetworkCookieJar, QNetworkRequest, QNetworkProxy, QSsl, QSslSocket
     from PySide.QtWebKit import QWebPage, QWebView
     HAS_PYSIDE = True
-except Exception, e:
+except Exception as e:
     HAS_PYSIDE = False
     from PyQt4 import QtCore
     from PyQt4.QtCore import SIGNAL, QUrl, QString, Qt, QEvent
@@ -220,7 +221,7 @@ class Browser(object):
             for s in ("Get", "Head", "Post",
                       "Put", "Delete", "Custom"))
         for i in self._operation_names.keys():
-            if isinstance(i, basestring):
+            if isinstance(i, six.string_types):
                 del self._operation_names[i]
         # Webpage slots
         self._load_status = None
@@ -253,7 +254,7 @@ class Browser(object):
         self._debug(INFO, "Page load started")
 
     def _on_manager_ssl_errors(self, reply, errors):
-        url = unicode(toString(reply.url()))
+        url = six.u(toString(reply.url()))
         if self.ignore_ssl_errors:
             self._debug(WARNING, "SSL certificate error ignored: %s" % url)
             reply.ignoreSslErrors()
@@ -261,8 +262,8 @@ class Browser(object):
             self._debug(WARNING, "SSL certificate error: %s" % url)
 
     def _on_authentication_required(self, reply, authenticator):
-        url = unicode(toString(reply.url()))
-        realm = unicode(authenticator.realm())
+        url = six.u(toString(reply.url()))
+        realm = six.u(authenticator.realm())
         self._debug("HTTP auth required: %s (realm: %s)" % (url, realm))
         if not self._http_authentication_callback:
             self._debug(WARNING, "HTTP auth required, but no callback defined")
@@ -279,7 +280,7 @@ class Browser(object):
 
     def _on_reply(self, reply):
         self._replies += 1
-        self._reply_url = unicode(toString(reply.url()))
+        self._reply_url = six.u(toString(reply.url()))
         self._reply_status = not bool(reply.error())
         self.cookies = merge_cookies(
             self.cookies,
@@ -324,7 +325,7 @@ class Browser(object):
             self._debug(INFO, "Javascript console: %s" % message)
 
     def _javascript_confirm(self, webframe, message):
-        smessage = unicode(message)
+        smessage = six.u(message)
         url = webframe.url()
         self._debug(INFO, "Javascript confirm (webframe url = %s): %s" %
             (url, smessage))
@@ -336,7 +337,7 @@ class Browser(object):
 
     def _javascript_prompt(self, webframe, message, defaultvalue, result):
         url = webframe.url()
-        smessage = unicode(message)
+        smessage = six.u(message)
         self._debug(INFO, "Javascript prompt (webframe url = %s): %s" %
             (url, smessage))
         if self._javascript_prompt_callback:
@@ -383,13 +384,15 @@ class Browser(object):
         return path
 
     def _start_download(self, reply, outfd):
-        url = unicode(toString(reply.url()))
+        url = six.u(toString(reply.url()))
         path = None
         if outfd is None:
             path = self._get_filepath_for_url(url, reply)
             outfd = open(path, "wb")
         def _on_ready_read():
             data = reply.readAll()
+            if six.PY3:
+                data = data.data()
             if getattr(reply, 'downloaded_nbytes', None) is None:
                 reply.downloaded_nbytes= 0
             reply.downloaded_nbytes += len(data)
@@ -400,6 +403,8 @@ class Browser(object):
             self._debug(ERROR, "Network error on download: %s" % url)
         def _on_finished():
             data = reply.readAll()
+            if six.PY3:
+                data = data.data()
             if len(data):
                 if getattr(reply, 'downloaded_nbytes at end', None) is None:
                     reply.downloaded_nbytes= 0
@@ -470,7 +475,7 @@ class Browser(object):
         return res
 
     def _get_html(self):
-        return unicode(self.webframe.toHtml())
+        return six.u(self.webframe.toHtml())
 
     def _get_soup(self):
         if not self._html_parser:
@@ -478,7 +483,7 @@ class Browser(object):
         return self._html_parser(self.html)
 
     def _get_url(self):
-        return unicode(toString(self.webframe.url()))
+        return six.u(toString(self.webframe.url()))
 
     url = property(_get_url)
     """Current URL."""
@@ -548,7 +553,7 @@ class Browser(object):
     def make_request(self, url, operation="GET"):
         if operation:
             operation = ("%s" % operation).lower()
-        if isinstance(url, basestring):
+        if isinstance(url, six.string_types):
             url = QUrl(url)
         if not isinstance(url, QNetworkRequest):
             url = QNetworkRequest(url)
@@ -609,7 +614,7 @@ class Browser(object):
     def wait_a_little(br, timeout):
         try:
             br.wait_load(timeout)
-        except SpynnerTimeout, e:
+        except SpynnerTimeout as e:
             pass
 
     def wait_requests(self, wait_requests = None, url = None, url_regex = None):
@@ -812,7 +817,7 @@ class Browser(object):
                 where = self.webview.mapToGlobal(twhere)
                 if where == twhere:
                     where = self.webview.mapToGlobal(where)
-            except Exception, e:
+            except Exception as e:
                     raise SpynnerError('Cant find %s (%s)' % (selector, e))
         return where
 
@@ -1008,7 +1013,7 @@ class Browser(object):
                     try:
                         loaded = self._wait_load(timeout=delay)
                         self._debug(DEBUG, loaded_msg)
-                    except SpynnerTimeout, e:
+                    except SpynnerTimeout as e:
                         self._debug(DEBUG, waiting_msg)
                 else:
                     self._debug(DEBUG, loaded_msg)
@@ -1389,7 +1394,7 @@ class Browser(object):
         @note: If url is a path, the current base URL will be pre-appended.
         """
         def _on_reply(reply):
-            url = unicode(toString(reply.url()))
+            url = six.u(toString(reply.url()))
             self._download_reply_status = not bool(reply.error())
         self._download_reply_status = None
         if not urlparse.urlsplit(url).scheme:
@@ -1512,7 +1517,7 @@ def _first(iterable, pred=bool):
 
 def _debug(obj, linefeed=True, outfd=sys.stderr, outputencoding="utf8"):
     """Print a debug info line to stream channel"""
-    if isinstance(obj, unicode):
+    if isinstance(obj, six.text_type):
         obj = obj.encode(outputencoding)
     strobj = str(obj) + ("\n" if linefeed else "")
     outfd.write(strobj)
@@ -1521,7 +1526,7 @@ def _debug(obj, linefeed=True, outfd=sys.stderr, outputencoding="utf8"):
 
 def toString(s):
     if HAS_PYSIDE:
-        if isinstance(s, basestring):
+        if isinstance(s, six.string_types):
             return s
     if isinstance(s, QString):
         return u"%s" % s
@@ -1580,7 +1585,7 @@ def merge_cookies(cookies1, cookies2):
             #    print i.toRawForm()
             #    print "-"*80
         cookies[k] = i
-    return cookies.values()
+    return list(cookies.values())
 
 
 class SpynnerError(Exception):
@@ -1666,7 +1671,7 @@ class NManager(QNetworkAccessManager):
             jar.allCookies(),
         )
         manager.cookieJar().setAllCookies(cookies)
-        url = unicode(toString(request.url()))
+        url = six.u(toString(request.url()))
         operation_name = self._operation_names.get(
             operation, str(operation)).upper()
         req = self.make_request(request, operation_name)
@@ -1740,4 +1745,3 @@ class NManager(QNetworkAccessManager):
             if self.ob.manager.proxy_url:
                 self.set_proxy(self.ob.manager.proxy_url)
         return self.proxy()
-

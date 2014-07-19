@@ -2,7 +2,13 @@ Initializing the browser
 ==================================
 The main concept to have a browser out there::
 
-    >>> import spynner
+    >>> import spynner, os, sys
+    >>> def print_contents(browser, dest='~/.browser.html'):
+    ...     """Print the browser contents somewhere for you to see its context
+    ...     in doctest pdb, type print_contents(browser) and that's it, open firefox
+    ...     with file://~/browser.html."""
+    ...     import os
+    ...     open(os.path.expanduser(dest), 'w').write(browser.contents)
     >>> import time
     >>> from StringIO import StringIO
     >>> debug_stream = StringIO()
@@ -194,24 +200,28 @@ Under the hood, we use this.evaluateJavaScript('this.value = xxx') ::
     Javascript console (:1): checkmea true
     Javascript console (:1): checkmeb false
     Javascript console (:1): checkmec false
+    <BLANKLINE>
     >>> browser.wk_check(['#checkmeb', '#checkmec'])
     >>> ret = run_debug(browser.runjs, '$($("input[name=checkme]")).each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.attr("checked"));});')
     Run Javascript code: $($("input[name=checkme]")).each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.attr("checked"));});
     Javascript console (:1): checkmea true
     Javascript console (:1): checkmeb true
     Javascript console (:1): checkmec true
+    <BLANKLINE>
     >>> browser.wk_uncheck(['#checkmeb', '#checkmec'])
     >>> ret = run_debug(browser.runjs, '$($("input[name=checkme]")).each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.attr("checked"));});')
     Run Javascript code: $($("input[name=checkme]")).each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.attr("checked"));});
     Javascript console (:1): checkmea true
     Javascript console (:1): checkmeb false
     Javascript console (:1): checkmec false
+    <BLANKLINE>
     >>> browser.wk_uncheck(['#checkmea'])
     >>> ret = run_debug(browser.runjs, '$($("input[name=checkme]")).each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.attr("checked"));});')
     Run Javascript code: $($("input[name=checkme]")).each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.attr("checked"));});
     Javascript console (:1): checkmea false
     Javascript console (:1): checkmeb false
     Javascript console (:1): checkmec false
+    <BLANKLINE>
 
 Using jquery
 +++++++++++++++++++
@@ -228,24 +238,28 @@ Under the hood, we use $(sel).attr('checked', 'checked')::
     Javascript console (:1): checkmea true
     Javascript console (:1): checkmeb false
     Javascript console (:1): checkmec false
+    <BLANKLINE>
     >>> browser.check(['#checkmeb', '#checkmec'])
     >>> ret = run_debug(browser.runjs, '$($("input[name=checkme]")).each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.attr("checked"));});')
     Run Javascript code: $($("input[name=checkme]")).each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.attr("checked"));});
     Javascript console (:1): checkmea true
     Javascript console (:1): checkmeb true
     Javascript console (:1): checkmec true
+    <BLANKLINE>
     >>> browser.uncheck(['#checkmeb', '#checkmec'])
     >>> ret = run_debug(browser.runjs, '$($("input[name=checkme]")).each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.attr("checked"));});')
     Run Javascript code: $($("input[name=checkme]")).each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.attr("checked"));});
     Javascript console (:1): checkmea true
     Javascript console (:1): checkmeb false
     Javascript console (:1): checkmec false
+    <BLANKLINE>
     >>> browser.uncheck(['#checkmea'])
     >>> ret = run_debug(browser.runjs, '$($("input[name=checkme]")).each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.attr("checked"));});')
     Run Javascript code: $($("input[name=checkme]")).each(function(i, e){je=$(e);console.log(je.attr("id")+" "+je.attr("checked"));});
     Javascript console (:1): checkmea false
     Javascript console (:1): checkmeb false
     Javascript console (:1): checkmec false
+    <BLANKLINE>
 
 Using select inputs
 ----------------------
@@ -283,6 +297,7 @@ If it is a multiple it takes all::
     Javascript console (:1): mbbb true
     Javascript console (:1): mccc false
     Javascript console (:1): mddd true
+    <BLANKLINE>
 
 Using jquery
 +++++++++++++++++++
@@ -301,6 +316,7 @@ Under the hood, we use $(sel).attr("selected", "selected")::
     Javascript console (:1): bbb true
     Javascript console (:1): ccc false
     Javascript console (:1): ddd false
+    <BLANKLINE>
 
 With a select with multiple args, it can also not deselect already selected values (remove as default)::
 
@@ -311,6 +327,7 @@ With a select with multiple args, it can also not deselect already selected valu
     Javascript console (:1): bbb true
     Javascript console (:1): ccc true
     Javascript console (:1): ddd false
+    <BLANKLINE>
     >>> browser.select('#asel option[name="bbb"]', remove=True)
     >>> ret = run_debug(browser.runjs, '$($("#asel option")).each(function(i, e){je=$(e);console.log(je.attr("name")+" "+je.attr("selected"));});')
     Run Javascript code: $($("#asel option")).each(function(i, e){je=$(e);console.log(je.attr("name")+" "+je.attr("selected"));});
@@ -318,6 +335,7 @@ With a select with multiple args, it can also not deselect already selected valu
     Javascript console (:1): bbb true
     Javascript console (:1): ccc false
     Javascript console (:1): ddd false
+    <BLANKLINE>
 
 If it is a multiple it takes all::
 
@@ -328,6 +346,7 @@ If it is a multiple it takes all::
     Javascript console (:1): mbbb true
     Javascript console (:1): mccc false
     Javascript console (:1): mddd true
+    <BLANKLINE>
 
 
 Using text inputs
@@ -345,6 +364,7 @@ Under the hood, we use jQuery(selector).val(xxx)::
     >>> browser.fill('input[name="w"]', 'foo')
     >>> ret = run_debug(browser.fill, 'input[name="w"]', 'foo')
     Run Javascript code: $('input[name="w"]').val('foo')
+    <BLANKLINE>
 
 Jquery Notes
 =============
@@ -390,6 +410,7 @@ Loading manually jquery
     >>> ret = run_debug(browser.runjs,"console.log(typeof(jQuery));")
     Run Javascript code: console.log(typeof(jQuery));
     Javascript console (:1): undefined
+    <BLANKLINE>
 
 Eck, we didnt included jQuery !
  loading it::
@@ -398,6 +419,7 @@ Eck, we didnt included jQuery !
     >>> ret = run_debug(browser.runjs, "console.log(typeof(jQuery));")
     Run Javascript code: console.log(typeof(jQuery));
     Javascript console (:1): function
+    <BLANKLINE>
 
 Cook your soup: parsing the HTML
 ===================================

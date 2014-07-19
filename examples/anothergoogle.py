@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 __docformat__ = 'restructuredtext en'
 
 import logging
@@ -26,7 +27,7 @@ def get_tree(h):
         h = h.html
     if not isinstance(h, basestring):
         h = h.contents
-    return document_fromstring(h) 
+    return document_fromstring(h)
 
 
 def getQtBrowser(download_directory=None):
@@ -55,11 +56,11 @@ def main(download_directory=None):
     def can_continuea(abrowser):
         t = get_tree(abrowser)
         return len(t.xpath("//input[@name='q']")) > 0
-    br.wait_for_content(can_continuea, 60, u'Timeout while loading account data') 
+    br.wait_for_content(can_continuea, 60, u'Timeout while loading account data')
     br.fill('input[name="q"]', 'kiorky')
     t = get_tree(br)
     name = [a.attrib['name']
-            for a in  t.xpath('//input[@type="submit"]') 
+            for a in  t.xpath('//input[@type="submit"]')
             if 'google' in a.value.lower()][0]
     # search for the search input control which can change id
     input_sel = "input[name='%s']" % name
@@ -69,11 +70,11 @@ def main(download_directory=None):
     def can_continueb(abrowser):
         t = get_tree(abrowser)
         return len( t.xpath('//*[@id="ires"]')) > 0
-    br.wait_for_content(can_continueb, 60, u'Timeout while loading account data') 
+    br.wait_for_content(can_continueb, 60, u'Timeout while loading account data')
     assert 'cryptelium.net' in br.html
 
 
 if __name__ == '__main__':
-    print main()
+    print(main())
 
 # vim:set et sts=4 ts=4 tw=80:

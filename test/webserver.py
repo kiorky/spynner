@@ -13,7 +13,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-
+from __future__ import print_function
 import os
 import re
 import cgi
@@ -24,19 +24,19 @@ from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 class Handler(BaseHTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
-        self.basedir = kwargs.pop("basedir")    
+        self.basedir = kwargs.pop("basedir")
         self.verbose = kwargs.pop("verbose")
         self.protected = kwargs.pop("protected")
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
-        
+
     def _debug_headers(self, headers):
         if self.verbose:
             for header in headers.headers:
-                print header,
-            
+                print(header,)
+
     def do_GET(self):
         request_headers = self.headers.headers[:]
-        self._debug_headers(request_headers)        
+        self._debug_headers(request_headers)
         path = re.sub("\?.*$", "", self.path.strip("/"))
         filepath = os.path.join(self.basedir, path)
         if not os.path.isfile(filepath):
@@ -56,12 +56,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/html')
         self.end_headers()
         sheaders = "<br />".join(request_headers)
-        html = open(filepath).read().replace("$headers", sheaders)         
+        html = open(filepath).read().replace("$headers", sheaders)
         self.wfile.write(html)
-     
+
     def do_POST(self):
         ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-        self.send_response(200)        
+        self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         self.wfile.write("<html></html>");
@@ -69,19 +69,19 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         if self.verbose:
             BaseHTTPRequestHandler.log_message(self, *args)
-        
+
 def get_handler_factory(basedir, verbose, protected):
     def factory(*args):
         return Handler(*args, basedir=basedir, verbose=verbose, protected=protected)
     return factory
-        
+
 def get_server(host, port, basedir, verbose=False, protected=None):
     return HTTPServer((host, port), get_handler_factory(basedir, verbose, protected))
 
 def main():
     basedir = os.path.join(os.path.dirname(__file__), "fixtures")
     server = get_server('', 8081, basedir, True, ("/protected.html",))
-    print 'started HTTP server'
+    print('started HTTP server')
     server.serve_forever()
 
 if __name__ == '__main__':
