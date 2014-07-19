@@ -1,6 +1,6 @@
 CHANGELOG
 ============
-2.18 (unreleased)
+2.18 (2014-07-19)
 -----------------
 
 - changelog fix
