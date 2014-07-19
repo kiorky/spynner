@@ -3,13 +3,13 @@ CHANGELOG
 2.18 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- changelog fix
 
 
 2.17 (2014-07-19)
 -----------------
 
-- Nothing changed yet.
+- py3 support
 
 
 2.16 (2014-04-25)
