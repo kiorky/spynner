@@ -39,8 +39,9 @@ setup(
     install_requires=[
         'six',
         'beautifulsoup4',
+        'unittest2',
         'pyquery',
-        'autopy',        #'https://github.com/Riamse/autopy.git',
+        'autopy',  #'https://github.com/Riamse/autopy.git',
         'setuptools',
     ],
     scripts=[],
