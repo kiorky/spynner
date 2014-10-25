@@ -682,6 +682,15 @@ class Browser(object):
         if wait_load:
             return self._wait_load(timeout)
 
+    def set_web_settings(self, attribute, value):
+        """
+        set the property of web page
+        @param attribute: QWebSettings.Attribute
+        @param value: set the attribute on if true, or else off
+        """
+        settings = self.webpage.settings()
+        settings.setAttribute(attribute, value)
+
     def click(self, selector, wait_load=False, wait_requests=None, timeout=None):
         """
         Click any clickable element in page.
