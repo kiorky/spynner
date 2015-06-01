@@ -181,7 +181,7 @@ CHANGELOG
 - Implement image snapshots
 - Implement URL filters
 - Implement cookies setting
-  [tokland <tokland@gmail.com>]
+  [tokland <pyarnau@gmail.com>]
 
 
 0.0.2 (2009-07-27)
@@ -193,11 +193,11 @@ CHANGELOG
 - Instance variable to ignore SSL certificate errors
 - Start using epydoc format for API documentation
 - Add create_webview/destroy_webview for GUI debugging
-  [tokland <tokland@gmail.com>]
+  [tokland <pyarnau@gmail.com>]
 
 0.0.1 (2009-07-25)
 --------------------
-- Initial release.  [tokland <tokland@gmail.com>]
+- Initial release.  [tokland <pyarnau@gmail.com>]
 
 
 .. vim:set sts=4 ts=4 ai et tw=0:

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (c) Arnau Sanchez <tokland@gmail.com>
+# Copyright (c) Arnau Sanchez <pyarnau@gmail.com>
 
 # This script is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ setup(
     version=version,
     description="Programmatic web browsing module with AJAX support for Python",
     author="Arnau Sanchez, Mathieu Le Marec-Pasquet",
-    author_email="tokland@gmail.com, kiorky@cryptelium.net",
+    author_email="pyarnau@gmail.com, kiorky@cryptelium.net",
     url=url,
     packages = find_packages('src'),
     package_dir = {'': 'src'},
