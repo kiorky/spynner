@@ -35,7 +35,7 @@ Authors
 ------------
 
 - Mathieu Le Marec - Pasquet <kiorky@cryptelium.net>
-- Arnau Sanchez <tokland@gmail.com>
+- Arnau Sanchez <pyarnau@gmail.com>
 
 Contributors
 -----------------
