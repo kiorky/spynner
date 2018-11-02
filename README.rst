@@ -16,7 +16,7 @@ Spynner takes advantage of `JQuery <http://jquery.com>`_. a powerful Javascript 
 Using Spynner you would able to simulate a web browser with no GUI (though a browsing window can be opened for debugging purposes), so it may be used to implement crawlers or acceptance testing tools.
 
 
-See usage on: https://github.com/makinacorpus/spynner/tree/master/src/spynner/tests/spynner.rst
+See usage on: https://github.com/kiorky/spynner/tree/master/src/spynner/tests/spynner.rst
 Or below if the section is preset
 
 Credits
@@ -30,6 +30,8 @@ Companies
 
 .. |makinacom| image:: http://depot.makina-corpus.org/public/logo.gif
 .. _makinacom:  http://www.makina-corpus.com
+
+
 
 Authors
 ------------
@@ -52,7 +54,7 @@ Dependencies
 
 Feedback
 ==============
-Open an `Issue <https://github.com/makinacorpus/spynner/issues>`_ to report a bug or request a new feature. Other comments and suggestions can be directly emailed to the authors_.
+Open an `Issue <https://github.com/kiorky/spynner/issues>`_ to report a bug or request a new feature. Other comments and suggestions can be directly emailed to the authors_.
 
 Install
 ============
@@ -64,7 +66,7 @@ Install
 
 * The bleeding edge version is hosted on github::
 
-    git clone https://github.com/makinacorpus/spynner.git
+    git clone https://github.com/kiorky/spynner.git
     cd spynner
     python setup.py install
 
